@@ -22,7 +22,7 @@ const defaultIcon = L.icon({
 L.Marker.prototype.options.icon = defaultIcon;
 
 // 都道府県と市区町村から緯度経度を推定する簡易的な関数
-const geocodeAddress = async (prefecture: string, city: string): Promise<{ lat: number; lng: number } | null> => {
+const geocodeAddress = async (prefecture: string, _city: string): Promise<{ lat: number; lng: number } | null> => {
   // 都道府県の中心座標（簡易版）
   const prefectureCoordinates: Record<string, { lat: number; lng: number }> = {
     '北海道': { lat: 43.064, lng: 141.347 },
@@ -101,6 +101,8 @@ export const StoreMap = () => {
 
   // 加盟店データを取得
   const fetchStores = async () => {
+    if (!supabase) return;
+
     try {
       const { data, error } = await supabase
         .from('stores')
@@ -133,6 +135,11 @@ export const StoreMap = () => {
 
   // 削除処理
   const handleDelete = async (storeId: string) => {
+    if (!supabase) {
+      alert('データベースに接続できません');
+      return;
+    }
+
     if (!window.confirm('本当にこの加盟店を削除しますか？')) {
       return;
     }
@@ -160,6 +167,12 @@ export const StoreMap = () => {
   // フォーム送信処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!supabase) {
+      alert('データベースに接続できません');
+      return;
+    }
+
     setLoading(true);
 
     try {
