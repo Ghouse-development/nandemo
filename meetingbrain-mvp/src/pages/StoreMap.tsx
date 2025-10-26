@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { MapPin, Plus, X, Edit, Trash2 } from 'lucide-react';
 import { Card } from '../components/Card';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import type { Store } from '../lib/types';
 import { formatDate } from '../lib/utils';
 import L from 'leaflet';
