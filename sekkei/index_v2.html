@@ -451,6 +451,29 @@ body {
   accent-color: var(--primary-color);
 }
 
+.task-state-select {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.task-state-select.state-yellow {
+  background: #fff8d6;
+  border-color: #f4e2a0;
+  color: #7a5b00;
+}
+
+.task-state-select.state-green {
+  background: #e8f7e8;
+  border-color: #b9e4b9;
+  color: #0f5132;
+}
+
 .task-label {
   flex: 1;
   color: var(--text-primary);
@@ -1119,6 +1142,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // グローバル変数
 let currentUser = null;
+let currentDesigner = null;
 let projects = [];
 let designers = [];
 let emailTemplates = [];
@@ -1147,6 +1171,19 @@ const TASK_NAMES = {
   application: '申請依頼',
   exterior: '外構依頼',
   dandori: 'ダンドリUP'
+};
+
+// タスク状態定義
+const TASK_STATES = {
+  workingDrawing: ['', '依頼済', '保存済'],
+  plumbing: ['', '依頼済', '保存済'],
+  ventilation: ['', '依頼済', '保存済'],
+  solar: ['', '依頼済', '保存済'],
+  evoltz: ['', '依頼済', '保存済'],
+  sash: ['', '依頼済', '保存済'],
+  groundSurvey: ['', '依頼済', '保存済'],
+  application: ['', '依頼済', '保存済'],
+  structure: ['', '依頼済', 'ラフチェック済', '１回目CB済', '２回目CB済']
 };
 
 // ============================================
@@ -1235,6 +1272,7 @@ async function init() {
   try {
     await Promise.all([
       loadDesigners(),
+      loadCurrentDesigner(),
       loadProjects(),
       loadEmailTemplates(),
       loadVendors(),
@@ -1265,6 +1303,31 @@ async function loadDesigners() {
     .order('name');
   if (error) throw error;
   designers = data || [];
+}
+
+async function loadCurrentDesigner() {
+  if (!currentUser || !currentUser.email) return;
+
+  // admin@ghouse.jpの場合は設計士を特定しない（全案件閲覧可能）
+  if (currentUser.email === 'admin@ghouse.jp') {
+    currentDesigner = null;
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('designers')
+    .select('*')
+    .eq('email', currentUser.email)
+    .single();
+
+  if (error) {
+    console.warn('設計士情報の取得に失敗:', error);
+    currentDesigner = null;
+    return;
+  }
+
+  currentDesigner = data;
+  console.log('現在の設計士:', currentDesigner);
 }
 
 async function loadProjects() {
@@ -1403,11 +1466,26 @@ function renderProjectCard(project) {
     const emailBtn = hasMapping ?
       `<button class="task-email-btn" onclick="openEmailFromTask('${project.id}', '${key}')">📧</button>` : '';
 
+    // 状態セレクトの生成（TASK_STATESに定義されているタスクのみ）
+    let stateSelect = '';
+    if (TASK_STATES[key]) {
+      const stateClass = task.state === '依頼済' ? 'state-yellow' : task.state === '保存済' ? 'state-green' : '';
+      stateSelect = `
+        <select class="task-state-select ${stateClass}"
+          onchange="updateTaskState('${project.id}', '${key}', this.value)">
+          ${TASK_STATES[key].map(state =>
+            `<option value="${state}" ${task.state === state ? 'selected' : ''}>${state || '-'}</option>`
+          ).join('')}
+        </select>
+      `;
+    }
+
     return `
       <div class="task-item">
         <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}
           onchange="updateTaskStatus('${project.id}', '${key}', this.checked)">
         <span class="task-label">${TASK_NAMES[key]}</span>
+        ${stateSelect}
         ${emailBtn}
       </div>
     `;
@@ -1486,6 +1564,32 @@ async function updateTaskStatus(projectId, taskKey, completed) {
   showStatus('保存済み', 'saved');
 }
 
+async function updateTaskState(projectId, taskKey, state) {
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
+
+  const progressData = project.progress || {};
+  if (!progressData[taskKey]) progressData[taskKey] = {};
+  progressData[taskKey].state = state;
+
+  showStatus('保存中...', 'saving');
+  const { error } = await supabase
+    .from('projects')
+    .update({ progress: progressData, updated_at: new Date().toISOString() })
+    .eq('id', projectId);
+
+  if (error) {
+    showStatus('エラー', 'error');
+    showToast('保存に失敗しました: ' + error.message, 'error');
+    return;
+  }
+
+  project.progress = progressData;
+  project.updated_at = new Date().toISOString();
+  renderProjects();
+  showStatus('保存済み', 'saved');
+}
+
 function openProjectModal(projectId = null) {
   editingProjectId = projectId;
   const modal = document.getElementById('projectModal');
@@ -1530,6 +1634,10 @@ async function saveProject() {
 
   showStatus('保存中...', 'saving');
 
+  // 担当設計士のIDを取得
+  const designer = designers.find(d => d.name === assignedTo);
+  const designerId = designer ? designer.id : null;
+
   const blankProgress = {};
   Object.keys(TASK_NAMES).forEach(key => {
     blankProgress[key] = { completed: false, date: '', state: '' };
@@ -1542,6 +1650,7 @@ async function saveProject() {
       .update({
         customer,
         assigned_to: assignedTo,
+        designer_id: designerId,
         specifications,
         memo,
         updated_at: new Date().toISOString()
@@ -1560,6 +1669,7 @@ async function saveProject() {
       uid: 'proj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
       customer,
       assigned_to: assignedTo,
+      designer_id: designerId,
       specifications,
       memo,
       status: 'active',

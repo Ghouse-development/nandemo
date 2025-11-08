@@ -16,7 +16,10 @@
       "Bash(npm run build:*)",
       "Bash(mkdir:*)",
       "Bash(git branch:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(explorer:*)",
+      "Bash(start index_v2.html)"
     ],
     "deny": [],
     "ask": []

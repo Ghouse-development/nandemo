@@ -20,6 +20,7 @@ DROP TABLE IF EXISTS designers CASCADE;
 CREATE TABLE designers (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
+  email TEXT UNIQUE,
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -31,6 +32,7 @@ CREATE TABLE projects (
   uid TEXT UNIQUE NOT NULL,
   customer TEXT NOT NULL,
   assigned_to TEXT NOT NULL,
+  designer_id UUID REFERENCES designers(id) ON DELETE SET NULL,
   specifications TEXT,
   memo TEXT,
   status TEXT DEFAULT 'active',
@@ -87,9 +89,11 @@ CREATE TABLE task_template_mappings (
 -- PART 3: インデックス作成
 -- =====================================================
 CREATE INDEX idx_projects_assigned_to ON projects(assigned_to);
+CREATE INDEX idx_projects_designer_id ON projects(designer_id);
 CREATE INDEX idx_projects_status ON projects(status);
 CREATE INDEX idx_projects_customer ON projects(customer);
 CREATE INDEX idx_projects_created_by ON projects(created_by);
+CREATE INDEX idx_designers_email ON designers(email);
 CREATE INDEX idx_email_templates_category ON email_templates(category);
 CREATE INDEX idx_template_vendors_template_id ON template_vendors(template_id);
 CREATE INDEX idx_task_mappings_task_key ON task_template_mappings(task_key);
@@ -142,7 +146,15 @@ DROP POLICY IF EXISTS "Authenticated users can delete projects" ON projects;
 CREATE POLICY "Authenticated users can view projects"
   ON projects FOR SELECT
   TO authenticated
-  USING (true);
+  USING (
+    -- 管理者は全て見られる
+    auth.jwt() ->> 'email' = 'admin@ghouse.jp'
+    OR
+    -- 担当者は自分の案件のみ見られる
+    designer_id IN (
+      SELECT id FROM designers WHERE email = auth.jwt() ->> 'email'
+    )
+  );
 
 CREATE POLICY "Authenticated users can insert projects"
   ON projects FOR INSERT
@@ -265,28 +277,28 @@ CREATE TRIGGER update_task_mappings_updated_at BEFORE UPDATE ON task_template_ma
 -- =====================================================
 
 -- 設計担当者とIC担当者の追加
-INSERT INTO designers (name) VALUES
+INSERT INTO designers (name, email) VALUES
   -- 設計担当
-  ('箕浦 三四郎'),
-  ('林 恭生'),
-  ('田中 聡'),
-  ('北村 晃平'),
-  ('高濱 洋文'),
-  ('足立 雅哉'),
-  ('内藤 智之'),
-  ('荘野 善宏'),
-  ('若狹 龍成'),
-  ('石井 義信'),
+  ('箕浦 三四郎', '箕浦.三四郎@ghouse.jp'),
+  ('林 恭生', '林.恭生@ghouse.jp'),
+  ('田中 聡', '田中.聡@ghouse.jp'),
+  ('北村 晃平', '北村.晃平@ghouse.jp'),
+  ('高濱 洋文', '高濱.洋文@ghouse.jp'),
+  ('足立 雅哉', '足立.雅哉@ghouse.jp'),
+  ('内藤 智之', '内藤.智之@ghouse.jp'),
+  ('荘野 善宏', '荘野.善宏@ghouse.jp'),
+  ('若狹 龍成', '若狹.龍成@ghouse.jp'),
+  ('石井 義信', 'ishii-y@g-house.osaka.jp'),
   -- IC担当
-  ('柳川 奈緒'),
-  ('西川 由佳'),
-  ('古久保 知佳子'),
-  ('島田 真奈'),
-  ('吉川 侑希'),
-  ('中川 千尋'),
-  ('今村 珠梨'),
-  ('浦川 千夏'),
-  ('森永 凪子');
+  ('柳川 奈緒', '柳川.奈緒@ghouse.jp'),
+  ('西川 由佳', '西川.由佳@ghouse.jp'),
+  ('古久保 知佳子', '古久保.知佳子@ghouse.jp'),
+  ('島田 真奈', '島田.真奈@ghouse.jp'),
+  ('吉川 侑希', 'yoshikawa-y@g-house.osaka.jp'),
+  ('中川 千尋', 'nakagawa-c@g-house.osaka.jp'),
+  ('今村 珠梨', 'imamura-s@g-house.osaka.jp'),
+  ('浦川 千夏', 'urakawa-c@g-house.osaka.jp'),
+  ('森永 凪子', 'morinaga-n@g-house.osaka.jp');
 
 -- メールテンプレートの挿入
 INSERT INTO email_templates (template_id, display_name, category, company, contact, email, subject_format, template_text, has_special_content, has_sub_options, default_special_content, created_by)
