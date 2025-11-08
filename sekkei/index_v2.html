@@ -1169,8 +1169,7 @@ async function signIn() {
 
     if (error) throw error;
 
-    // ログイン成功
-    location.reload();
+    // ログイン成功 - onAuthStateChangeで処理されるのでreloadは不要
   } catch (error) {
     console.error('ログインエラー:', error);
     showToast('ログインに失敗しました: ' + error.message, 'error');
@@ -1211,8 +1210,19 @@ async function checkAuth() {
 }
 
 // 認証状態変更を監視
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' && session) {
+supabase.auth.onAuthStateChange(async (event, session) => {
+  // SIGNED_INイベントは初回ログイン時のみ処理
+  if (event === 'SIGNED_IN' && !currentUser) {
+    currentUser = session.user;
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('mainContainer').classList.add('show');
+
+    const displayName = currentUser.email.split('@')[0];
+    document.getElementById('userName').textContent = displayName;
+    document.getElementById('userAvatar').src = 'https://via.placeholder.com/32/4A90E2/FFFFFF?text=' + displayName.charAt(0).toUpperCase();
+
+    await init();
+  } else if (event === 'SIGNED_OUT') {
     location.reload();
   }
 });
