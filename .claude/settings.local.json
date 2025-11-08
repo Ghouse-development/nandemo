@@ -19,7 +19,11 @@
       "Bash(vercel:*)",
       "mcp__ide__getDiagnostics",
       "Bash(explorer:*)",
-      "Bash(start index_v2.html)"
+      "Bash(start index_v2.html)",
+      "Bash(start https://nandemo-nu.vercel.app/sekkei/index_v2.html)",
+      "Bash(timeout:*)",
+      "Bash(start http://localhost:3000/sekkei/index_v2.html)",
+      "Bash(start http://localhost:3004/sekkei/index_v2.html)"
     ],
     "deny": [],
     "ask": []

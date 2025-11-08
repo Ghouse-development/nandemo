@@ -861,6 +861,25 @@ body {
   </div>
 </div>
 
+<!-- アカウント選択画面 -->
+<div id="accountSelectContainer" class="login-container" style="display: none;">
+  <div class="login-card">
+    <h1>アカウント選択</h1>
+    <p>ご利用の業務を選択してください</p>
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 24px;">
+      <button class="btn btn-primary" style="width: 100%; padding: 16px; font-size: 16px;" onclick="selectAccountType('設計')">
+        📐 設計担当
+      </button>
+      <button class="btn btn-primary" style="width: 100%; padding: 16px; font-size: 16px;" onclick="selectAccountType('IC')">
+        🎨 IC担当
+      </button>
+      <button class="btn btn-secondary" style="width: 100%; padding: 16px; font-size: 16px;" onclick="selectAccountType('admin')">
+        👑 管理者（全権限）
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- メインアプリケーション -->
 <div id="mainContainer" class="main-container">
   <!-- ヘッダー -->
@@ -1155,6 +1174,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // グローバル変数
 let currentUser = null;
 let currentDesigner = null;
+let currentUserCategory = null; // 'admin' | '設計' | 'IC'
 let projects = [];
 let designers = [];
 let emailTemplates = [];
@@ -1165,8 +1185,8 @@ let editingProjectId = null;
 let editingTemplateId = null;
 let editingVendorId = null;
 
-// タスク定義
-const TASK_NAMES = {
+// タスク定義（設計担当用）
+const SEKKEI_TASK_NAMES = {
   meeting0: '0回目打合せ',
   floorPlan: '間取り確定',
   initialPrep: '初回準備',
@@ -1184,6 +1204,29 @@ const TASK_NAMES = {
   exterior: '外構依頼',
   dandori: 'ダンドリUP'
 };
+
+// タスク定義（IC担当用）
+const IC_TASK_NAMES = {
+  meeting0: '0回目打合せ',
+  floorPlan: '間取り確定',
+  initialPrep: '初回準備',
+  tategu: '建具プレゼン',
+  lighting: '照明プラン',
+  iron: 'アイアン階段・手摺',
+  equipment: '設備PB・見積',
+  finalCheck: '最終チェック'
+};
+
+// 現在のタスク名を返す関数
+function getTaskNames() {
+  if (currentUserCategory === 'IC') {
+    return IC_TASK_NAMES;
+  }
+  return SEKKEI_TASK_NAMES;
+}
+
+// 後方互換性のため
+const TASK_NAMES = SEKKEI_TASK_NAMES;
 
 // タスク状態定義
 const TASK_STATES = {
@@ -1264,6 +1307,26 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN' && !currentUser) {
     currentUser = session.user;
     document.getElementById('loginContainer').style.display = 'none';
+
+    // admin@ghouse.jpの場合はアカウント選択画面を表示
+    if (currentUser.email === 'admin@ghouse.jp') {
+      document.getElementById('accountSelectContainer').style.display = 'flex';
+      return;
+    }
+
+    // その他の場合は設計士情報を取得してcategoryを判定
+    const { data: designerData } = await supabase
+      .from('designers')
+      .select('*')
+      .eq('email', currentUser.email)
+      .single();
+
+    if (designerData) {
+      currentDesigner = designerData;
+      currentUserCategory = designerData.category; // '設計' or 'IC'
+    }
+
+    // メインコンテナを表示
     document.getElementById('mainContainer').classList.add('show');
 
     const displayName = currentUser.email.split('@')[0];
@@ -1275,6 +1338,19 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     location.reload();
   }
 });
+
+// アカウントタイプ選択
+async function selectAccountType(category) {
+  currentUserCategory = category;
+  document.getElementById('accountSelectContainer').style.display = 'none';
+  document.getElementById('mainContainer').classList.add('show');
+
+  const displayName = currentUser.email.split('@')[0];
+  document.getElementById('userName').textContent = displayName;
+  document.getElementById('userAvatar').src = 'https://via.placeholder.com/32/4A90E2/FFFFFF?text=' + displayName.charAt(0).toUpperCase();
+
+  await init();
+}
 
 // ============================================
 // 初期化
@@ -1487,7 +1563,10 @@ function renderProjectCard(project) {
   const progress = calculateProgress(project);
   const progressData = project.progress || {};
 
-  const tasksHtml = Object.keys(TASK_NAMES).map(key => {
+  // currentUserCategoryに応じたタスク名を取得
+  const currentTaskNames = getTaskNames();
+
+  const tasksHtml = Object.keys(currentTaskNames).map(key => {
     const task = progressData[key] || { completed: false, date: '', state: '' };
     const hasMapping = taskMappings[key];
     const emailBtn = hasMapping ?
@@ -1511,7 +1590,7 @@ function renderProjectCard(project) {
       <div class="task-item">
         <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}
           onchange="updateTaskStatus('${project.id}', '${key}', this.checked)">
-        <span class="task-label">${TASK_NAMES[key]}</span>
+        <span class="task-label">${currentTaskNames[key]}</span>
         ${stateSelect}
         ${emailBtn}
       </div>
@@ -1850,8 +1929,15 @@ function renderTemplates() {
   const categoryFilter = document.getElementById('categoryFilter').value;
 
   let filtered = emailTemplates;
+
+  // currentUserCategoryに応じてフィルタリング（管理者以外）
+  if (currentUserCategory && currentUserCategory !== 'admin') {
+    filtered = emailTemplates.filter(t => t.category === currentUserCategory);
+  }
+
+  // さらにカテゴリフィルタを適用
   if (categoryFilter) {
-    filtered = emailTemplates.filter(t => t.category === categoryFilter);
+    filtered = filtered.filter(t => t.category === categoryFilter);
   }
 
   if (filtered.length === 0) {
