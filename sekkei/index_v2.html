@@ -1,0 +1,2248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>設計・IC業務管理システム | Gハウス</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary-color: #4A90E2;
+  --primary-hover: #357ABD;
+  --secondary-color: #50E3C2;
+  --danger-color: #E94B3C;
+  --warning-color: #F5A623;
+  --success-color: #7ED321;
+  --text-primary: #2C3E50;
+  --text-secondary: #7F8C8D;
+  --text-muted: #BDC3C7;
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8F9FA;
+  --bg-tertiary: #ECF0F1;
+  --border-color: #E1E8ED;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+body {
+  font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ログイン画面 */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FFFFFF;
+  padding: 20px;
+}
+
+.login-card {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 48px;
+  box-shadow: var(--shadow-md);
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+
+.login-card h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.login-card p {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  font-size: 15px;
+}
+
+/* メインコンテナ */
+.main-container {
+  display: none;
+  max-width: 1800px;
+  margin: 0 auto;
+  background: var(--bg-secondary);
+  min-height: 100vh;
+}
+
+.main-container.show {
+  display: block;
+}
+
+/* ヘッダー */
+.header {
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+  padding: 16px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* タブナビゲーション */
+.tabs-nav {
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 32px;
+  display: flex;
+  gap: 8px;
+}
+
+.tab-nav-btn {
+  padding: 16px 24px;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-nav-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.tab-nav-btn.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+/* コンテンツエリア */
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+/* ツールバー */
+.toolbar {
+  background: white;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.toolbar-left {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.toolbar-right {
+  display: flex;
+  gap: 12px;
+}
+
+/* デザイナータブ */
+.designer-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.designer-tab {
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.designer-tab:hover {
+  background: var(--bg-tertiary);
+}
+
+.designer-tab.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+/* ボタン */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+  background: var(--secondary-color);
+  color: white;
+}
+
+.btn-secondary:hover {
+  opacity: 0.9;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-secondary);
+}
+
+.btn-danger {
+  background: var(--danger-color);
+  color: white;
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* 入力フィールド */
+.input, .select {
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: inherit;
+  background: white;
+  transition: all 0.2s;
+}
+
+.input:focus, .select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.input {
+  min-width: 200px;
+}
+
+/* カードグリッド */
+.cards-container {
+  padding: 32px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(600px, 1fr));
+  gap: 24px;
+}
+
+/* プロジェクトカード */
+.project-card {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+}
+
+.project-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--bg-secondary);
+}
+
+.card-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-primary {
+  background: #E8F4FD;
+  color: var(--primary-color);
+}
+
+.badge-success {
+  background: #E6F9F0;
+  color: var(--success-color);
+}
+
+/* 進捗バー */
+.progress-section {
+  margin-bottom: 20px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.progress-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.progress-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.progress-bar {
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+  transition: width 0.3s ease;
+  border-radius: 999px;
+}
+
+/* タスクリスト */
+.tasks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.task-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.task-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+.task-label {
+  flex: 1;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.task-email-btn {
+  padding: 4px 8px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s;
+}
+
+.task-item:hover .task-email-btn {
+  opacity: 1;
+}
+
+.task-email-btn:hover {
+  background: var(--primary-hover);
+}
+
+/* モーダル */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: white;
+  border-radius: var(--radius-lg);
+  width: min(800px, 90vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+
+.close:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 32px;
+}
+
+.modal-footer {
+  padding: 20px 32px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* フォーム */
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.form-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.form-hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ステータスインジケーター */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-saving {
+  background: #FFF4E6;
+  color: var(--warning-color);
+}
+
+.status-saving .status-dot {
+  background: var(--warning-color);
+  animation: pulse 1.5s infinite;
+}
+
+.status-saved {
+  background: #E6F9F0;
+  color: var(--success-color);
+}
+
+.status-saved .status-dot {
+  background: var(--success-color);
+}
+
+.status-error {
+  background: #FFE6E6;
+  color: var(--danger-color);
+}
+
+.status-error .status-dot {
+  background: var(--danger-color);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* テーブル */
+.table-container {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background: var(--bg-secondary);
+}
+
+.table th {
+  padding: 16px 20px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table td {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-color);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.table tbody tr:hover {
+  background: var(--bg-secondary);
+}
+
+/* 空状態 */
+.empty-state {
+  padding: 80px 40px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.empty-description {
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+/* メール出力 */
+.email-output {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  margin: 16px 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* レスポンシブ */
+@media (max-width: 1200px) {
+  .cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 12px 16px;
+  }
+
+  .toolbar {
+    padding: 16px;
+  }
+
+  .cards-container {
+    padding: 16px;
+  }
+
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tasks-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content {
+    width: 95vw;
+  }
+
+  .modal-body {
+    padding: 20px;
+  }
+}
+
+/* ローディングスピナー */
+.spinner {
+  border: 3px solid var(--bg-secondary);
+  border-top: 3px solid var(--primary-color);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 40px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* トースト通知 */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+  box-shadow: var(--shadow-lg);
+  display: none;
+  align-items: center;
+  gap: 12px;
+  z-index: 2000;
+}
+
+.toast.show {
+  display: flex;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.toast-success {
+  border-left: 4px solid var(--success-color);
+}
+
+.toast-error {
+  border-left: 4px solid var(--danger-color);
+}
+
+.toast-warning {
+  border-left: 4px solid var(--warning-color);
+}
+</style>
+</head>
+<body>
+
+<!-- ログイン画面 -->
+<div id="loginContainer" class="login-container">
+  <div class="login-card">
+    <h1>設計・IC業務管理システム</h1>
+    <p>メールアドレスとパスワードでログインしてください</p>
+    <div style="margin-bottom: 20px;">
+      <input type="email" class="form-input" id="loginEmail" placeholder="メールアドレス" style="width: 100%; margin-bottom: 12px;">
+      <input type="password" class="form-input" id="loginPassword" placeholder="パスワード" style="width: 100%;">
+    </div>
+    <button class="btn btn-primary" style="width: 100%;" onclick="signIn()">ログイン</button>
+  </div>
+</div>
+
+<!-- メインアプリケーション -->
+<div id="mainContainer" class="main-container">
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">Gハウス 設計管理</div>
+    </div>
+    <div class="header-right">
+      <div class="status-indicator status-saved" id="statusIndicator">
+        <span class="status-dot"></span>
+        <span id="statusText">保存済み</span>
+      </div>
+      <div class="user-info">
+        <img id="userAvatar" class="user-avatar" src="" alt="">
+        <span id="userName" class="user-name"></span>
+      </div>
+      <button class="btn btn-ghost btn-small" onclick="signOut()">ログアウト</button>
+    </div>
+  </header>
+
+  <!-- タブナビゲーション -->
+  <nav class="tabs-nav">
+    <button class="tab-nav-btn active" onclick="switchTab('projects', this)">📋 案件管理</button>
+    <button class="tab-nav-btn" onclick="switchTab('templates', this)">📧 メールテンプレート</button>
+    <button class="tab-nav-btn" onclick="switchTab('vendors', this)">👥 業者管理</button>
+    <button class="tab-nav-btn" onclick="switchTab('mappings', this)">🔗 タスク設定</button>
+  </nav>
+
+  <!-- 案件管理タブ -->
+  <div id="projectsTab" class="tab-panel active">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="designer-tabs" id="designerTabs"></div>
+        <input type="text" class="input" id="searchQuery" placeholder="検索..." oninput="renderProjects()">
+        <select class="select" id="specFilter" onchange="renderProjects()">
+          <option value="">すべての仕様</option>
+          <option>LIFE</option>
+          <option>LIFE+</option>
+          <option>HOURS</option>
+          <option>LACIE</option>
+          <option>LIFEリミ</option>
+          <option>LIFE+リミ</option>
+        </select>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-ghost" onclick="openDesignerModal()">設計士管理</button>
+        <button class="btn btn-primary" onclick="openProjectModal()">+ 案件追加</button>
+      </div>
+    </div>
+    <div class="cards-container">
+      <div class="cards-grid" id="projectsGrid"></div>
+      <div class="empty-state" id="emptyProjects" style="display: none;">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">案件がありません</div>
+        <div class="empty-description">「案件追加」ボタンから新しい案件を登録してください</div>
+        <button class="btn btn-primary" onclick="openProjectModal()">+ 案件追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- メールテンプレートタブ -->
+  <div id="templatesTab" class="tab-panel">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <select class="select" id="categoryFilter" onchange="renderTemplates()">
+          <option value="">すべてのカテゴリ</option>
+          <option value="設計">設計</option>
+          <option value="IC">IC</option>
+        </select>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-primary" onclick="openTemplateModal()">+ テンプレート追加</button>
+      </div>
+    </div>
+    <div class="cards-container">
+      <div class="table-container" id="templatesTable"></div>
+    </div>
+  </div>
+
+  <!-- 業者管理タブ -->
+  <div id="vendorsTab" class="tab-panel">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <select class="select" id="vendorTemplateFilter" onchange="renderVendors()">
+          <option value="">すべてのテンプレート</option>
+        </select>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-primary" onclick="openVendorModal()">+ 業者追加</button>
+      </div>
+    </div>
+    <div class="cards-container">
+      <div class="table-container" id="vendorsTable"></div>
+    </div>
+  </div>
+
+  <!-- タスク設定タブ -->
+  <div id="mappingsTab" class="tab-panel">
+    <div class="cards-container">
+      <div style="background: white; border-radius: var(--radius-lg); padding: 32px;">
+        <h2 style="margin-bottom: 20px; font-size: 24px; font-weight: 700;">タスクとメールテンプレートの紐づけ設定</h2>
+        <p style="margin-bottom: 32px; color: var(--text-secondary);">各タスクで使用するメールテンプレートを設定します。設定後、案件カードのタスクから直接メール作成が可能になります。</p>
+        <div id="mappingsGrid" style="display: grid; gap: 16px;"></div>
+        <div style="margin-top: 32px; text-align: right;">
+          <button class="btn btn-primary" onclick="saveMappings()">設定を保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル：案件追加/編集 -->
+<div id="projectModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title" id="projectModalTitle">案件追加</h2>
+      <button class="close" onclick="closeProjectModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">お客様名 *</label>
+        <input type="text" class="form-input" id="projectCustomer" placeholder="例：田中太郎様">
+      </div>
+      <div class="form-group">
+        <label class="form-label">担当設計士 *</label>
+        <select class="form-select" id="projectAssignedTo"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">仕様</label>
+        <select class="form-select" id="projectSpecifications">
+          <option>LIFE</option>
+          <option>LIFE+</option>
+          <option>HOURS</option>
+          <option>LACIE</option>
+          <option>LIFEリミ</option>
+          <option>LIFE+リミ</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">メモ</label>
+        <textarea class="form-textarea" id="projectMemo" placeholder="要望・注意点など"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeProjectModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveProject()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル：メールテンプレート追加/編集 -->
+<div id="templateModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title" id="templateModalTitle">テンプレート追加</h2>
+      <button class="close" onclick="closeTemplateModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">テンプレートID *</label>
+        <input type="text" class="form-input" id="templateId" placeholder="例：new-template">
+        <div class="form-hint">英数字とハイフンのみ使用可能</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">表示名 *</label>
+        <input type="text" class="form-input" id="templateDisplayName" placeholder="例：新会社名（作業内容）">
+      </div>
+      <div class="form-group">
+        <label class="form-label">カテゴリ *</label>
+        <select class="form-select" id="templateCategory">
+          <option value="設計">設計</option>
+          <option value="IC">IC</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">会社名 *</label>
+        <input type="text" class="form-input" id="templateCompany" placeholder="例：株式会社〇〇">
+      </div>
+      <div class="form-group">
+        <label class="form-label">宛先名</label>
+        <input type="text" class="form-input" id="templateContact" placeholder="例：田中様">
+      </div>
+      <div class="form-group">
+        <label class="form-label">メールアドレス</label>
+        <input type="text" class="form-input" id="templateEmail" placeholder="例：tanaka@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">件名フォーマット *</label>
+        <input type="text" class="form-input" id="templateSubjectFormat" placeholder="例：{customerName}様 新規〇〇作成依頼　期日{dueDate}">
+        <div class="form-hint">使用可能：{customerName}, {dueDate}, {staffName}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">メール本文 *</label>
+        <textarea class="form-textarea" id="templateText" rows="10" placeholder="例:&#10;{company}&#10;{contact}&#10;&#10;いつもお世話になっております。"></textarea>
+        <div class="form-hint">使用可能：{company}, {contact}, {customerName}, {dueDate}, {staffName}, {specialContent}</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeTemplateModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveTemplate()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル：業者追加/編集 -->
+<div id="vendorModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title" id="vendorModalTitle">業者追加</h2>
+      <button class="close" onclick="closeVendorModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">テンプレート *</label>
+        <select class="form-select" id="vendorTemplateId"></select>
+        <div class="form-hint">この業者がどのテンプレートに紐づくかを選択</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">業者ID *</label>
+        <input type="text" class="form-input" id="vendorId" placeholder="例：new-vendor">
+        <div class="form-hint">英数字とハイフンのみ使用可能</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">会社名 *</label>
+        <input type="text" class="form-input" id="vendorCompany" placeholder="例：株式会社〇〇">
+      </div>
+      <div class="form-group">
+        <label class="form-label">担当者名 *</label>
+        <input type="text" class="form-input" id="vendorContact" placeholder="例：田中様">
+      </div>
+      <div class="form-group">
+        <label class="form-label">電話番号</label>
+        <input type="text" class="form-input" id="vendorTel" placeholder="例：090-1234-5678">
+      </div>
+      <div class="form-group">
+        <label class="form-label">メールアドレス *</label>
+        <input type="text" class="form-input" id="vendorEmail" placeholder="例：tanaka@example.com">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeVendorModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveVendor()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル：設計士管理 -->
+<div id="designerModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title">設計士管理</h2>
+      <button class="close" onclick="closeDesignerModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">新しい設計士を追加</label>
+        <div style="display: flex; gap: 12px;">
+          <input type="text" class="form-input" id="newDesignerName" placeholder="設計士名" style="flex: 1;">
+          <button class="btn btn-primary" onclick="addDesigner()">追加</button>
+        </div>
+      </div>
+      <div id="designerList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeDesignerModal()">完了</button>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル：メール作成 -->
+<div id="emailModal" class="modal">
+  <div class="modal-content" style="max-width: 1000px;">
+    <div class="modal-header">
+      <h2 class="modal-title">📧 メール作成</h2>
+      <button class="close" onclick="closeEmailModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="emailComposerContent"></div>
+  </div>
+</div>
+
+<!-- トースト通知 -->
+<div id="toast" class="toast"></div>
+
+<script>
+// ============================================
+// Supabase初期化
+// ============================================
+const SUPABASE_URL = 'https://twzsirpfudqwboeyakta.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3enNpcnBmdWRxd2JvZXlha3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE0MzM4NjgsImV4cCI6MjA3NzAwOTg2OH0.E_8GxfsO6Scjc0dDoEoyxq3i4lfvNxYZvnSL1OlSDSM';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// グローバル変数
+let currentUser = null;
+let projects = [];
+let designers = [];
+let emailTemplates = [];
+let vendors = [];
+let taskMappings = {};
+let currentDesignerTab = 'ALL';
+let editingProjectId = null;
+let editingTemplateId = null;
+let editingVendorId = null;
+
+// タスク定義
+const TASK_NAMES = {
+  meeting0: '0回目打合せ',
+  floorPlan: '間取り確定',
+  initialPrep: '初回準備',
+  finalDrawing: '確定図面',
+  checklist: 'チェックリスト',
+  workingDrawing: '実施図依頼',
+  plumbing: '給排水',
+  ventilation: '換気',
+  solar: '太陽光',
+  evoltz: 'エボルツ',
+  sash: 'サッシ依頼',
+  structure: '構造依頼',
+  groundSurvey: '地盤調査',
+  application: '申請依頼',
+  exterior: '外構依頼',
+  dandori: 'ダンドリUP'
+};
+
+// ============================================
+// 認証処理
+// ============================================
+async function signIn() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+
+  if (!email || !password) {
+    showToast('メールアドレスとパスワードを入力してください', 'error');
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (error) throw error;
+
+    // ログイン成功
+    location.reload();
+  } catch (error) {
+    console.error('ログインエラー:', error);
+    showToast('ログインに失敗しました: ' + error.message, 'error');
+  }
+}
+
+async function signOut() {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    location.reload();
+  } catch (error) {
+    console.error('ログアウトエラー:', error);
+    showToast('ログアウトに失敗しました', 'error');
+  }
+}
+
+async function checkAuth() {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session) {
+    currentUser = session.user;
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('mainContainer').classList.add('show');
+
+    // メールアドレスからユーザー名を表示（@より前の部分）
+    const displayName = currentUser.email.split('@')[0];
+    document.getElementById('userName').textContent = displayName;
+
+    // デフォルトアバターを設定
+    document.getElementById('userAvatar').src = 'https://via.placeholder.com/32/4A90E2/FFFFFF?text=' + displayName.charAt(0).toUpperCase();
+
+    await init();
+  } else {
+    document.getElementById('loginContainer').style.display = 'flex';
+    document.getElementById('mainContainer').classList.remove('show');
+  }
+}
+
+// 認証状態変更を監視
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    location.reload();
+  }
+});
+
+// ============================================
+// 初期化
+// ============================================
+async function init() {
+  showStatus('読み込み中...', 'saving');
+  try {
+    await Promise.all([
+      loadDesigners(),
+      loadProjects(),
+      loadEmailTemplates(),
+      loadVendors(),
+      loadTaskMappings()
+    ]);
+
+    renderDesignerTabs();
+    renderProjects();
+    renderTemplates();
+    renderVendors();
+    renderMappings();
+
+    showStatus('保存済み', 'saved');
+  } catch (error) {
+    console.error('初期化エラー:', error);
+    showStatus('エラー', 'error');
+    showToast('データの読み込みに失敗しました: ' + error.message, 'error');
+  }
+}
+
+// ============================================
+// データ読み込み
+// ============================================
+async function loadDesigners() {
+  const { data, error } = await supabase
+    .from('designers')
+    .select('*')
+    .order('name');
+  if (error) throw error;
+  designers = data || [];
+}
+
+async function loadProjects() {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  projects = data || [];
+}
+
+async function loadEmailTemplates() {
+  const { data, error } = await supabase
+    .from('email_templates')
+    .select('*')
+    .order('display_name');
+  if (error) throw error;
+  emailTemplates = data || [];
+}
+
+async function loadVendors() {
+  const { data, error } = await supabase
+    .from('template_vendors')
+    .select('*')
+    .order('company');
+  if (error) throw error;
+  vendors = data || [];
+}
+
+async function loadTaskMappings() {
+  const { data, error } = await supabase
+    .from('task_template_mappings')
+    .select('*');
+  if (error) throw error;
+  taskMappings = {};
+  (data || []).forEach(mapping => {
+    taskMappings[mapping.task_key] = mapping.template_id;
+  });
+}
+
+// ============================================
+// UI制御
+// ============================================
+function switchTab(tabName, element) {
+  document.querySelectorAll('.tab-nav-btn').forEach(btn => btn.classList.remove('active'));
+  if (element) {
+    element.classList.add('active');
+  } else {
+    // フォールバック：tabNameに基づいてアクティブなボタンを見つける
+    const buttons = document.querySelectorAll('.tab-nav-btn');
+    buttons.forEach((btn, index) => {
+      const tabs = ['projects', 'templates', 'vendors', 'mappings'];
+      if (tabs[index] === tabName) {
+        btn.classList.add('active');
+      }
+    });
+  }
+  document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+  document.getElementById(tabName + 'Tab').classList.add('active');
+}
+
+function showStatus(message, type) {
+  const indicator = document.getElementById('statusIndicator');
+  const text = document.getElementById('statusText');
+  indicator.className = 'status-indicator status-' + type;
+  text.textContent = message;
+}
+
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  toast.className = 'toast toast-' + type + ' show';
+  toast.textContent = message;
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+
+// ============================================
+// 案件管理
+// ============================================
+function renderDesignerTabs() {
+  const container = document.getElementById('designerTabs');
+  const activeCount = projects.filter(p => p.status !== 'completed').length;
+
+  let html = `<button class="designer-tab ${currentDesignerTab === 'ALL' ? 'active' : ''}" onclick="setDesignerTab('ALL')">全案件 (${activeCount})</button>`;
+
+  designers.forEach(designer => {
+    const count = projects.filter(p => p.assigned_to === designer.name && p.status !== 'completed').length;
+    html += `<button class="designer-tab ${currentDesignerTab === designer.name ? 'active' : ''}" onclick="setDesignerTab('${designer.name}')">${designer.name} (${count})</button>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function setDesignerTab(name) {
+  currentDesignerTab = name;
+  renderDesignerTabs();
+  renderProjects();
+}
+
+function renderProjects() {
+  const container = document.getElementById('projectsGrid');
+  const emptyState = document.getElementById('emptyProjects');
+
+  let filtered = projects.filter(p => {
+    if (currentDesignerTab !== 'ALL' && p.assigned_to !== currentDesignerTab) return false;
+    if (p.status === 'completed') return false;
+
+    const query = document.getElementById('searchQuery').value.toLowerCase();
+    if (query && !p.customer.toLowerCase().includes(query) && !(p.memo || '').toLowerCase().includes(query)) return false;
+
+    const specFilter = document.getElementById('specFilter').value;
+    if (specFilter && p.specifications !== specFilter) return false;
+
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.style.display = 'none';
+    emptyState.style.display = 'block';
+    return;
+  }
+
+  container.style.display = 'grid';
+  emptyState.style.display = 'none';
+  container.innerHTML = filtered.map(project => renderProjectCard(project)).join('');
+}
+
+function renderProjectCard(project) {
+  const progress = calculateProgress(project);
+  const progressData = project.progress || {};
+
+  const tasksHtml = Object.keys(TASK_NAMES).map(key => {
+    const task = progressData[key] || { completed: false, date: '', state: '' };
+    const hasMapping = taskMappings[key];
+    const emailBtn = hasMapping ?
+      `<button class="task-email-btn" onclick="openEmailFromTask('${project.id}', '${key}')">📧</button>` : '';
+
+    return `
+      <div class="task-item">
+        <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}
+          onchange="updateTaskStatus('${project.id}', '${key}', this.checked)">
+        <span class="task-label">${TASK_NAMES[key]}</span>
+        ${emailBtn}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="project-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">
+            ${project.customer}
+            <span class="badge badge-primary">${project.specifications || 'LIFE'}</span>
+          </div>
+          <div class="card-subtitle">担当：${project.assigned_to}</div>
+        </div>
+        <button class="btn btn-ghost btn-small" onclick="editProject('${project.id}')">編集</button>
+      </div>
+      <div class="progress-section">
+        <div class="progress-header">
+          <span class="progress-label">進捗状況</span>
+          <span class="progress-value">${progress}%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: ${progress}%"></div>
+        </div>
+      </div>
+      <div class="tasks-grid">${tasksHtml}</div>
+      ${project.memo ? `<div style="padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-md); margin-top: 16px; font-size: 14px; color: var(--text-secondary);">${project.memo}</div>` : ''}
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--bg-secondary); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 13px; color: var(--text-muted);">更新: ${formatDateTime(project.updated_at)}</span>
+        <button class="btn btn-danger btn-small" onclick="deleteProject('${project.id}')">削除</button>
+      </div>
+    </div>
+  `;
+}
+
+function calculateProgress(project) {
+  const progressData = project.progress || {};
+  const keys = Object.keys(TASK_NAMES);
+  const completed = keys.filter(key => progressData[key]?.completed).length;
+  return Math.round((completed / keys.length) * 100);
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+async function updateTaskStatus(projectId, taskKey, completed) {
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
+
+  const progressData = project.progress || {};
+  if (!progressData[taskKey]) progressData[taskKey] = {};
+  progressData[taskKey].completed = completed;
+  if (completed && !progressData[taskKey].date) {
+    progressData[taskKey].date = new Date().toISOString().split('T')[0];
+  }
+
+  showStatus('保存中...', 'saving');
+  const { error } = await supabase
+    .from('projects')
+    .update({ progress: progressData, updated_at: new Date().toISOString() })
+    .eq('id', projectId);
+
+  if (error) {
+    showStatus('エラー', 'error');
+    showToast('保存に失敗しました: ' + error.message, 'error');
+    return;
+  }
+
+  project.progress = progressData;
+  project.updated_at = new Date().toISOString();
+  renderProjects();
+  showStatus('保存済み', 'saved');
+}
+
+function openProjectModal(projectId = null) {
+  editingProjectId = projectId;
+  const modal = document.getElementById('projectModal');
+  const title = document.getElementById('projectModalTitle');
+
+  if (projectId) {
+    const project = projects.find(p => p.id === projectId);
+    title.textContent = '案件編集';
+    document.getElementById('projectCustomer').value = project.customer;
+    document.getElementById('projectAssignedTo').value = project.assigned_to;
+    document.getElementById('projectSpecifications').value = project.specifications || 'LIFE';
+    document.getElementById('projectMemo').value = project.memo || '';
+  } else {
+    title.textContent = '案件追加';
+    document.getElementById('projectCustomer').value = '';
+    document.getElementById('projectSpecifications').value = 'LIFE';
+    document.getElementById('projectMemo').value = '';
+  }
+
+  const assignedToSelect = document.getElementById('projectAssignedTo');
+  assignedToSelect.innerHTML = '<option value="">選択してください</option>' +
+    designers.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+
+  modal.classList.add('show');
+}
+
+function closeProjectModal() {
+  document.getElementById('projectModal').classList.remove('show');
+  editingProjectId = null;
+}
+
+async function saveProject() {
+  const customer = document.getElementById('projectCustomer').value.trim();
+  const assignedTo = document.getElementById('projectAssignedTo').value;
+  const specifications = document.getElementById('projectSpecifications').value;
+  const memo = document.getElementById('projectMemo').value.trim();
+
+  if (!customer || !assignedTo) {
+    showToast('お客様名と担当設計士は必須です', 'error');
+    return;
+  }
+
+  showStatus('保存中...', 'saving');
+
+  const blankProgress = {};
+  Object.keys(TASK_NAMES).forEach(key => {
+    blankProgress[key] = { completed: false, date: '', state: '' };
+  });
+
+  if (editingProjectId) {
+    const project = projects.find(p => p.id === editingProjectId);
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        customer,
+        assigned_to: assignedTo,
+        specifications,
+        memo,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', editingProjectId);
+
+    if (error) {
+      showStatus('エラー', 'error');
+      showToast('保存に失敗しました: ' + error.message, 'error');
+      return;
+    }
+
+    Object.assign(project, { customer, assigned_to: assignedTo, specifications, memo, updated_at: new Date().toISOString() });
+  } else {
+    const newProject = {
+      uid: 'proj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      customer,
+      assigned_to: assignedTo,
+      specifications,
+      memo,
+      status: 'active',
+      progress: blankProgress,
+      created_by: currentUser.id
+    };
+
+    const { data, error } = await supabase
+      .from('projects')
+      .insert([newProject])
+      .select();
+
+    if (error) {
+      showStatus('エラー', 'error');
+      showToast('保存に失敗しました: ' + error.message, 'error');
+      return;
+    }
+
+    projects.unshift(data[0]);
+  }
+
+  closeProjectModal();
+  renderDesignerTabs();
+  renderProjects();
+  showStatus('保存済み', 'saved');
+  showToast('案件を保存しました', 'success');
+}
+
+function editProject(projectId) {
+  openProjectModal(projectId);
+}
+
+async function deleteProject(projectId) {
+  if (!confirm('この案件を削除しますか？')) return;
+
+  showStatus('削除中...', 'saving');
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', projectId);
+
+  if (error) {
+    showStatus('エラー', 'error');
+    showToast('削除に失敗しました: ' + error.message, 'error');
+    return;
+  }
+
+  projects = projects.filter(p => p.id !== projectId);
+  renderDesignerTabs();
+  renderProjects();
+  showStatus('保存済み', 'saved');
+  showToast('案件を削除しました', 'success');
+}
+
+// ============================================
+// 設計士管理
+// ============================================
+function openDesignerModal() {
+  renderDesignerList();
+  document.getElementById('designerModal').classList.add('show');
+}
+
+function closeDesignerModal() {
+  document.getElementById('designerModal').classList.remove('show');
+}
+
+function renderDesignerList() {
+  const container = document.getElementById('designerList');
+  container.innerHTML = '<h3 style="margin: 24px 0 16px; font-size: 18px; font-weight: 600;">登録済み設計士</h3>' +
+    '<div class="table-container"><table class="table"><thead><tr><th>設計士名</th><th>担当案件数</th><th>操作</th></tr></thead><tbody>' +
+    designers.map(designer => {
+      const count = projects.filter(p => p.assigned_to === designer.name).length;
+      return `
+        <tr>
+          <td><strong>${designer.name}</strong></td>
+          <td>${count}件</td>
+          <td><button class="btn btn-danger btn-small" onclick="deleteDesigner('${designer.id}')">削除</button></td>
+        </tr>
+      `;
+    }).join('') +
+    '</tbody></table></div>';
+}
+
+async function addDesigner() {
+  const name = document.getElementById('newDesignerName').value.trim();
+  if (!name) {
+    showToast('設計士名を入力してください', 'error');
+    return;
+  }
+
+  if (designers.find(d => d.name === name)) {
+    showToast('既に存在する設計士名です', 'error');
+    return;
+  }
+
+  showStatus('追加中...', 'saving');
+  const { data, error } = await supabase
+    .from('designers')
+    .insert([{ name, created_by: currentUser.id }])
+    .select();
+
+  if (error) {
+    showStatus('エラー', 'error');
+    showToast('追加に失敗しました: ' + error.message, 'error');
+    return;
+  }
+
+  designers.push(data[0]);
+  document.getElementById('newDesignerName').value = '';
+  renderDesignerList();
+  renderDesignerTabs();
+  showStatus('保存済み', 'saved');
+  showToast('設計士を追加しました', 'success');
+}
+
+async function deleteDesigner(designerId) {
+  const designer = designers.find(d => d.id === designerId);
+  const hasProjects = projects.some(p => p.assigned_to === designer.name);
+
+  if (hasProjects) {
+    showToast('この設計士は案件に割当てられています。案件の担当を変更してから削除してください。', 'error');
+    return;
+  }
+
+  if (!confirm(`${designer.name}を削除しますか？`)) return;
+
+  showStatus('削除中...', 'saving');
+  const { error } = await supabase
+    .from('designers')
+    .delete()
+    .eq('id', designerId);
+
+  if (error) {
+    showStatus('エラー', 'error');
+    showToast('削除に失敗しました: ' + error.message, 'error');
+    return;
+  }
+
+  designers = designers.filter(d => d.id !== designerId);
+  renderDesignerList();
+  renderDesignerTabs();
+  showStatus('保存済み', 'saved');
+  showToast('設計士を削除しました', 'success');
+}
+
+// ============================================
+// メールテンプレート管理
+// ============================================
+function renderTemplates() {
+  const container = document.getElementById('templatesTable');
+  const categoryFilter = document.getElementById('categoryFilter').value;
+
+  let filtered = emailTemplates;
+  if (categoryFilter) {
+    filtered = emailTemplates.filter(t => t.category === categoryFilter);
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📧</div><div class="empty-title">テンプレートがありません</div><div class="empty-description">メールテンプレートを追加して、案件からワンクリックでメールを作成できます</div><button class="btn btn-primary" onclick="openTemplateModal()">+ テンプレート追加</button></div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>表示名</th>
+          <th>カテゴリ</th>
+          <th>会社名</th>
+          <th>メールアドレス</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(template => `
+          <tr>
+            <td><strong>${template.display_name}</strong></td>
+            <td><span class="badge ${template.category === 'IC' ? 'badge-success' : 'badge-primary'}">${template.category}</span></td>
+            <td>${template.company}</td>
+            <td>${template.email || '—'}</td>
+            <td>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-ghost btn-small" onclick="editTemplate('${template.id}')">編集</button>
+                <button class="btn btn-danger btn-small" onclick="deleteTemplate('${template.id}')">削除</button>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function openTemplateModal(templateId = null) {
+  editingTemplateId = templateId;
+  const modal = document.getElementById('templateModal');
+  const title = document.getElementById('templateModalTitle');
+
+  if (templateId) {
+    const template = emailTemplates.find(t => t.id === templateId);
+    title.textContent = 'テンプレート編集';
+    document.getElementById('templateId').value = template.template_id;
+    document.getElementById('templateId').disabled = true;
+    document.getElementById('templateDisplayName').value = template.display_name;
+    document.getElementById('templateCategory').value = template.category;
+    document.getElementById('templateCompany').value = template.company;
+    document.getElementById('templateContact').value = template.contact || '';
+    document.getElementById('templateEmail').value = template.email || '';
+    document.getElementById('templateSubjectFormat').value = template.subject_format || '';
+    document.getElementById('templateText').value = template.template_text || '';
+  } else {
+    title.textContent = 'テンプレート追加';
+    document.getElementById('templateId').value = '';
+    document.getElementById('templateId').disabled = false;
+    document.getElementById('templateDisplayName').value = '';
+    document.getElementById('templateCategory').value = '設計';
+    document.getElementById('templateCompany').value = '';
+    document.getElementById('templateContact').value = '';
+    document.getElementById('templateEmail').value = '';
+    document.getElementById('templateSubjectFormat').value = '';
+    document.getElementById('templateText').value = '';
+  }
+
+  modal.classList.add('show');
+}
+
+function closeTemplateModal() {
+  document.getElementById('templateModal').classList.remove('show');
+  editingTemplateId = null;
+}
+
+async function saveTemplate() {
+  const templateId = document.getElementById('templateId').value.trim();
+  const displayName = document.getElementById('templateDisplayName').value.trim();
+  const category = document.getElementById('templateCategory').value;
+  const company = document.getElementById('templateCompany').value.trim();
+  const contact = document.getElementById('templateContact').value.trim();
+  const email = document.getElementById('templateEmail').value.trim();
+  const subjectFormat = document.getElementById('templateSubjectFormat').value.trim();
+  const templateText = document.getElementById('templateText').value.trim();
+
+  if (!templateId || !displayName || !company || !subjectFormat || !templateText) {
+    showToast('必須項目を入力してください', 'error');
+    return;
+  }
+
+  showStatus('保存中...', 'saving');
+
+  const templateData = {
+    template_id: templateId,
+    display_name: displayName,
+    category,
+    company,
+    contact,
+    email,
+    subject_format: subjectFormat,
+    template_text: templateText,
+    has_special_content: false,
+    has_sub_options: false,
+    created_by: currentUser.id
+  };
+
+  if (editingTemplateId) {
+    const { error } = await supabase
+      .from('email_templates')
+      .update(templateData)
+      .eq('id', editingTemplateId);
+
+    if (error) {
+      showStatus('エラー', 'error');
+      showToast('保存に失敗しました: ' + error.message, 'error');
+      return;
+    }
+
+    const template = emailTemplates.find(t => t.id === editingTemplateId);
+    Object.assign(template, templateData);
+  } else {
+    const { data, error } = await supabase
+      .from('email_templates')
+      .insert([templateData])
+      .select();
+
+    if (error) {
+      showStatus('エラー', 'error');
+      showToast('保存に失敗しました: ' + error.message, 'error');
+      return;
+    }
+
+    emailTemplates.push(data[0]);
+  }
+
+  closeTemplateModal();
+  renderTemplates();
+  renderMappings();
+  showStatus('保存済み', 'saved');
+  showToast('テンプレートを保存しました', 'success');
+}
+
+function editTemplate(templateId) {
+  openTemplateModal(templateId);
+}
+
+async function deleteTemplate(templateId) {
+  if (!confirm('このテンプレートを削除しますか？')) return;
+
+  showStatus('削除中...', 'saving');
+  const { error } = await supabase
+    .from('email_templates')
+    .delete()
+    .eq('id', templateId);
+
+  if (error) {
+    showStatus('エラー', 'error');
+    showToast('削除に失敗しました: ' + error.message, 'error');
+    return;
+  }
+
+  emailTemplates = emailTemplates.filter(t => t.id !== templateId);
+  renderTemplates();
+  renderMappings();
+  showStatus('保存済み', 'saved');
+  showToast('テンプレートを削除しました', 'success');
+}
+
+// ============================================
+// 業者管理
+// ============================================
+function renderVendors() {
+  const container = document.getElementById('vendorsTable');
+  const filterSelect = document.getElementById('vendorTemplateFilter');
+  const templateFilter = filterSelect.value;
+
+  // フィルターオプションを更新（すべてのテンプレートを表示）
+  filterSelect.innerHTML = '<option value="">すべてのテンプレート</option>' +
+    emailTemplates.map(t =>
+      `<option value="${t.template_id}">${t.display_name}</option>`
+    ).join('');
+  if (templateFilter) filterSelect.value = templateFilter;
+
+  let filtered = vendors;
+  if (templateFilter) {
+    filtered = vendors.filter(v => v.template_id === templateFilter);
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">業者情報がありません</div><div class="empty-description">業者情報を登録すると、メールテンプレートで使用できます</div><button class="btn btn-primary" onclick="openVendorModal()">+ 業者追加</button></div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>会社名</th>
+          <th>担当者</th>
+          <th>電話番号</th>
+          <th>メールアドレス</th>
+          <th>テンプレート</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(vendor => {
+          const template = emailTemplates.find(t => t.template_id === vendor.template_id);
+          return `
+            <tr>
+              <td><strong>${vendor.company}</strong></td>
+              <td>${vendor.contact}</td>
+              <td>${vendor.tel || '—'}</td>
+              <td>${vendor.email}</td>
+              <td>${template ? template.display_name : '—'}</td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn btn-ghost btn-small" onclick="editVendor('${vendor.id}')">編集</button>
+                  <button class="btn btn-danger btn-small" onclick="deleteVendor('${vendor.id}')">削除</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function openVendorModal(vendorId = null) {
+  editingVendorId = vendorId;
+  const modal = document.getElementById('vendorModal');
+  const title = document.getElementById('vendorModalTitle');
+
+  // テンプレートセレクトを更新
+  const templateSelect = document.getElementById('vendorTemplateId');
+  templateSelect.innerHTML = '<option value="">選択してください</option>' +
+    emailTemplates.map(t => `<option value="${t.template_id}">${t.display_name}</option>`).join('');
+
+  if (vendorId) {
+    const vendor = vendors.find(v => v.id === vendorId);
+    title.textContent = '業者編集';
+    document.getElementById('vendorTemplateId').value = vendor.template_id;
+    document.getElementById('vendorId').value = vendor.vendor_id;
+    document.getElementById('vendorId').disabled = true;
+    document.getElementById('vendorCompany').value = vendor.company;
+    document.getElementById('vendorContact').value = vendor.contact;
+    document.getElementById('vendorTel').value = vendor.tel || '';
+    document.getElementById('vendorEmail').value = vendor.email;
+  } else {
+    title.textContent = '業者追加';
+    document.getElementById('vendorTemplateId').value = '';
+    document.getElementById('vendorId').value = '';
+    document.getElementById('vendorId').disabled = false;
+    document.getElementById('vendorCompany').value = '';
+    document.getElementById('vendorContact').value = '';
+    document.getElementById('vendorTel').value = '';
+    document.getElementById('vendorEmail').value = '';
+  }
+
+  modal.classList.add('show');
+}
+
+function closeVendorModal() {
+  document.getElementById('vendorModal').classList.remove('show');
+  editingVendorId = null;
+}
+
+async function saveVendor() {
+  const templateId = document.getElementById('vendorTemplateId').value;
+  const vendorId = document.getElementById('vendorId').value.trim();
+  const company = document.getElementById('vendorCompany').value.trim();
+  const contact = document.getElementById('vendorContact').value.trim();
+  const tel = document.getElementById('vendorTel').value.trim();
+  const email = document.getElementById('vendorEmail').value.trim();
+
+  if (!templateId || !vendorId || !company || !contact || !email) {
+    showToast('必須項目を入力してください', 'error');
+    return;
+  }
+
+  showStatus('保存中...', 'saving');
+
+  const vendorData = {
+    template_id: templateId,
+    vendor_id: vendorId,
+    company,
+    contact,
+    tel,
+    email,
+    created_by: currentUser.id
+  };
+
+  if (editingVendorId) {
+    const { error } = await supabase
+      .from('template_vendors')
+      .update(vendorData)
+      .eq('id', editingVendorId);
+
+    if (error) {
+      showStatus('エラー', 'error');
+      showToast('保存に失敗しました: ' + error.message, 'error');
+      return;
+    }
+
+    const vendor = vendors.find(v => v.id === editingVendorId);
+    Object.assign(vendor, vendorData);
+  } else {
+    const { data, error } = await supabase
+      .from('template_vendors')
+      .insert([vendorData])
+      .select();
+
+    if (error) {
+      showStatus('エラー', 'error');
+      showToast('保存に失敗しました: ' + error.message, 'error');
+      return;
+    }
+
+    vendors.push(data[0]);
+  }
+
+  closeVendorModal();
+  renderVendors();
+  showStatus('保存済み', 'saved');
+  showToast('業者情報を保存しました', 'success');
+}
+
+function editVendor(vendorId) {
+  openVendorModal(vendorId);
+}
+
+async function deleteVendor(vendorId) {
+  if (!confirm('この業者情報を削除しますか？')) return;
+
+  showStatus('削除中...', 'saving');
+  const { error } = await supabase
+    .from('template_vendors')
+    .delete()
+    .eq('id', vendorId);
+
+  if (error) {
+    showStatus('エラー', 'error');
+    showToast('削除に失敗しました: ' + error.message, 'error');
+    return;
+  }
+
+  vendors = vendors.filter(v => v.id !== vendorId);
+  renderVendors();
+  showStatus('保存済み', 'saved');
+  showToast('業者情報を削除しました', 'success');
+}
+
+// ============================================
+// タスク-テンプレート紐づけ
+// ============================================
+function renderMappings() {
+  const container = document.getElementById('mappingsGrid');
+
+  container.innerHTML = Object.keys(TASK_NAMES).map(taskKey => {
+    const templateOptions = emailTemplates.map(t =>
+      `<option value="${t.template_id}" ${taskMappings[taskKey] === t.template_id ? 'selected' : ''}>
+        ${t.display_name} (${t.category})
+      </option>`
+    ).join('');
+
+    return `
+      <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-md);">
+        <label style="flex: 0 0 200px; font-weight: 600;">${TASK_NAMES[taskKey]}</label>
+        <select class="form-select" id="mapping_${taskKey}" style="flex: 1;">
+          <option value="">メールテンプレートなし</option>
+          ${templateOptions}
+        </select>
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveMappings() {
+  showStatus('保存中...', 'saving');
+
+  const newMappings = {};
+  Object.keys(TASK_NAMES).forEach(taskKey => {
+    const select = document.getElementById('mapping_' + taskKey);
+    if (select && select.value) {
+      newMappings[taskKey] = select.value;
+    }
+  });
+
+  // 既存のマッピングを削除
+  const { error: deleteError } = await supabase
+    .from('task_template_mappings')
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000');
+
+  if (deleteError) {
+    showStatus('エラー', 'error');
+    showToast('保存に失敗しました: ' + deleteError.message, 'error');
+    return;
+  }
+
+  // 新しいマッピングを挿入
+  const mappingsToInsert = Object.keys(newMappings).map(taskKey => ({
+    task_key: taskKey,
+    template_id: newMappings[taskKey]
+  }));
+
+  if (mappingsToInsert.length > 0) {
+    const { error: insertError } = await supabase
+      .from('task_template_mappings')
+      .insert(mappingsToInsert);
+
+    if (insertError) {
+      showStatus('エラー', 'error');
+      showToast('保存に失敗しました: ' + insertError.message, 'error');
+      return;
+    }
+  }
+
+  taskMappings = newMappings;
+  renderProjects();
+  showStatus('保存済み', 'saved');
+  showToast('タスク設定を保存しました', 'success');
+}
+
+// ============================================
+// メール作成
+// ============================================
+function openEmailFromTask(projectId, taskKey) {
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
+
+  const templateId = taskMappings[taskKey];
+  if (!templateId) {
+    showToast('このタスクにメールテンプレートが設定されていません。\n「タスク設定」タブから設定してください。', 'error');
+    return;
+  }
+
+  const template = emailTemplates.find(t => t.template_id === templateId);
+  if (!template) {
+    showToast('テンプレートが見つかりません', 'error');
+    return;
+  }
+
+  const taskDate = project.progress?.[taskKey]?.date;
+  const dueDate = taskDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  const modal = document.getElementById('emailModal');
+  const content = document.getElementById('emailComposerContent');
+
+  content.innerHTML = `
+    <div class="form-group">
+      <label class="form-label">担当者名（署名用）</label>
+      <input type="text" class="form-input" id="emailStaffName" value="${project.assigned_to}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">期日</label>
+      <input type="date" class="form-input" id="emailDueDate" value="${dueDate}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">内容詳細（任意）</label>
+      <textarea class="form-textarea" id="emailSpecialContent" placeholder="必要に応じて詳細を入力"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="generateEmail('${project.id}', '${taskKey}')">メールを生成</button>
+    <div id="generatedEmailSection" style="display: none; margin-top: 32px;">
+      <h3 style="margin-bottom: 12px; font-size: 18px; font-weight: 600;">📧 件名</h3>
+      <div id="emailSubject" class="email-output"></div>
+      <button class="btn btn-secondary btn-small" onclick="copyText('emailSubject')">件名をコピー</button>
+
+      <h3 style="margin: 24px 0 12px; font-size: 18px; font-weight: 600;">📮 宛先</h3>
+      <div id="emailAddress" class="email-output"></div>
+      <button class="btn btn-secondary btn-small" onclick="copyText('emailAddress')">宛先をコピー</button>
+
+      <h3 style="margin: 24px 0 12px; font-size: 18px; font-weight: 600;">📨 本文</h3>
+      <div id="emailBody" class="email-output"></div>
+      <button class="btn btn-secondary btn-small" onclick="copyText('emailBody')">本文をコピー</button>
+    </div>
+  `;
+
+  modal.classList.add('show');
+}
+
+function generateEmail(projectId, taskKey) {
+  const project = projects.find(p => p.id === projectId);
+  const templateId = taskMappings[taskKey];
+  const template = emailTemplates.find(t => t.template_id === templateId);
+
+  const staffName = document.getElementById('emailStaffName').value.trim();
+  const dueDate = document.getElementById('emailDueDate').value;
+  const specialContent = document.getElementById('emailSpecialContent').value.trim();
+
+  const replacements = {
+    '{customerName}': project.customer,
+    '{dueDate}': dueDate,
+    '{staffName}': staffName,
+    '{company}': template.company,
+    '{contact}': template.contact || 'ご担当者様',
+    '{specialContent}': specialContent || ''
+  };
+
+  let subject = template.subject_format;
+  let body = template.template_text;
+
+  Object.keys(replacements).forEach(key => {
+    const regex = new RegExp(key.replace(/[{}]/g, '\\$&'), 'g');
+    subject = subject.replace(regex, replacements[key]);
+    body = body.replace(regex, replacements[key]);
+  });
+
+  document.getElementById('emailSubject').textContent = subject;
+  document.getElementById('emailAddress').textContent = template.email || 'メールアドレスが設定されていません';
+  document.getElementById('emailBody').textContent = body;
+  document.getElementById('generatedEmailSection').style.display = 'block';
+}
+
+function copyText(elementId) {
+  const element = document.getElementById(elementId);
+  const text = element.textContent;
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('コピーしました！', 'success');
+  }).catch(err => {
+    console.error('コピーに失敗:', err);
+    showToast('コピーに失敗しました', 'error');
+  });
+}
+
+function closeEmailModal() {
+  document.getElementById('emailModal').classList.remove('show');
+}
+
+// ============================================
+// ページ読み込み時
+// ============================================
+window.addEventListener('DOMContentLoaded', () => {
+  checkAuth();
+});
+</script>
+</body>
+</html>
