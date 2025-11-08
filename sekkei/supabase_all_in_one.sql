@@ -264,6 +264,30 @@ CREATE TRIGGER update_task_mappings_updated_at BEFORE UPDATE ON task_template_ma
 -- PART 7: 初期データ投入
 -- =====================================================
 
+-- 設計担当者とIC担当者の追加
+INSERT INTO designers (name) VALUES
+  -- 設計担当
+  ('箕浦 三四郎'),
+  ('林 恭生'),
+  ('田中 聡'),
+  ('北村 晃平'),
+  ('高濱 洋文'),
+  ('足立 雅哉'),
+  ('内藤 智之'),
+  ('荘野 善宏'),
+  ('若狹 龍成'),
+  ('石井 義信'),
+  -- IC担当
+  ('柳川 奈緒'),
+  ('西川 由佳'),
+  ('古久保 知佳子'),
+  ('島田 真奈'),
+  ('吉川 侑希'),
+  ('中川 千尋'),
+  ('今村 珠梨'),
+  ('浦川 千夏'),
+  ('森永 凪子');
+
 -- メールテンプレートの挿入
 INSERT INTO email_templates (template_id, display_name, category, company, contact, email, subject_format, template_text, has_special_content, has_sub_options, default_special_content, created_by)
 VALUES

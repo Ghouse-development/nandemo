@@ -2166,6 +2166,24 @@ function openEmailFromTask(projectId, taskKey) {
   const modal = document.getElementById('emailModal');
   const content = document.getElementById('emailComposerContent');
 
+  // テンプレートの業者リストを取得
+  const templateVendors = vendors.filter(v => v.template_id === templateId);
+  const hasVendorOptions = template.has_sub_options && templateVendors.length > 0;
+
+  // 業者選択ドロップダウン
+  let vendorSelectHtml = '';
+  if (hasVendorOptions) {
+    vendorSelectHtml = `
+      <div class="form-group">
+        <label class="form-label">業者選択</label>
+        <select class="form-select" id="emailVendorSelect" onchange="updateVendorInfo('${templateId}')">
+          <option value="">業者を選択してください</option>
+          ${templateVendors.map(v => `<option value="${v.id}">${v.company} - ${v.contact}</option>`).join('')}
+        </select>
+      </div>
+    `;
+  }
+
   content.innerHTML = `
     <div class="form-group">
       <label class="form-label">担当者名（署名用）</label>
@@ -2175,6 +2193,7 @@ function openEmailFromTask(projectId, taskKey) {
       <label class="form-label">期日</label>
       <input type="date" class="form-input" id="emailDueDate" value="${dueDate}">
     </div>
+    ${vendorSelectHtml}
     <div class="form-group">
       <label class="form-label">内容詳細（任意）</label>
       <textarea class="form-textarea" id="emailSpecialContent" placeholder="必要に応じて詳細を入力"></textarea>
@@ -2198,6 +2217,22 @@ function openEmailFromTask(projectId, taskKey) {
   modal.classList.add('show');
 }
 
+// 業者選択時に情報を更新
+function updateVendorInfo(templateId) {
+  const select = document.getElementById('emailVendorSelect');
+  if (!select) return;
+
+  // 選択されていない場合は何もしない
+  if (!select.value) return;
+
+  // 選択された業者を取得
+  const selectedVendor = vendors.find(v => v.id === select.value);
+  if (selectedVendor) {
+    // 特別なフィードバックは不要（generateEmail時に使用）
+    console.log('業者選択:', selectedVendor.company);
+  }
+}
+
 function generateEmail(projectId, taskKey) {
   const project = projects.find(p => p.id === projectId);
   const templateId = taskMappings[taskKey];
@@ -2207,13 +2242,28 @@ function generateEmail(projectId, taskKey) {
   const dueDate = document.getElementById('emailDueDate').value;
   const specialContent = document.getElementById('emailSpecialContent').value.trim();
 
+  // 業者選択がある場合は業者情報を使用
+  let company = template.company;
+  let contact = template.contact || 'ご担当者様';
+  let email = template.email;
+
+  const vendorSelect = document.getElementById('emailVendorSelect');
+  if (vendorSelect && vendorSelect.value) {
+    const selectedVendor = vendors.find(v => v.id === vendorSelect.value);
+    if (selectedVendor) {
+      company = selectedVendor.company;
+      contact = selectedVendor.contact;
+      email = selectedVendor.email;
+    }
+  }
+
   const replacements = {
     '{customerName}': project.customer,
     '{dueDate}': dueDate,
     '{staffName}': staffName,
-    '{company}': template.company,
-    '{contact}': template.contact || 'ご担当者様',
-    '{specialContent}': specialContent || ''
+    '{company}': company,
+    '{contact}': contact,
+    '{specialContent}': specialContent || template.default_special_content || ''
   };
 
   let subject = template.subject_format;
@@ -2226,7 +2276,7 @@ function generateEmail(projectId, taskKey) {
   });
 
   document.getElementById('emailSubject').textContent = subject;
-  document.getElementById('emailAddress').textContent = template.email || 'メールアドレスが設定されていません';
+  document.getElementById('emailAddress').textContent = email || 'メールアドレスが設定されていません';
   document.getElementById('emailBody').textContent = body;
   document.getElementById('generatedEmailSection').style.display = 'block';
 }
