@@ -4,30 +4,50 @@
 -- =====================================================
 
 -- =====================================================
--- PART 1: 設計士・IC担当者の追加（19名）
+-- PART 1: designersテーブルにcategoryカラム追加
 -- =====================================================
-INSERT INTO designers (name, email) VALUES
-  -- 設計担当（10名）
-  ('箕浦 三四郎', 'minoura-s@g-house.osaka.jp'),
-  ('林 恭生', 'hayashi-t@g-house.osaka.jp'),
-  ('田中 聡', 'ts@g-house.osaka.jp'),
-  ('北村 晃平', 'kitamura-k@g-house.osaka.jp'),
-  ('高濱 洋文', 'takahama-h@g-house.osaka.jp'),
-  ('足立 雅哉', 'adachi-m@g-house.osaka.jp'),
-  ('内藤 智之', 'naito-s@g-house.osaka.jp'),
-  ('荘野 善宏', 'shono-y@g-house.osaka.jp'),
-  ('若狹 龍成', 'wakasa-r@g-house.osaka.jp'),
-  ('石井 義信', 'ishii-y@g-house.osaka.jp'),
-  -- IC担当（9名）
-  ('柳川 奈緒', 'yn@g-house.osaka.jp'),
-  ('西川 由佳', 'ny@g-house.osaka.jp'),
-  ('古久保 知佳子', 'furukubo-c@g-house.osaka.jp'),
-  ('島田 真奈', 'shimada-m@g-house.osaka.jp'),
-  ('吉川 侑希', 'yoshikawa-y@g-house.osaka.jp'),
-  ('中川 千尋', 'nakagawa-c@g-house.osaka.jp'),
-  ('今村 珠梨', 'imamura-s@g-house.osaka.jp'),
-  ('浦川 千夏', 'urakawa-c@g-house.osaka.jp'),
-  ('森永 凪子', 'morinaga-n@g-house.osaka.jp')
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'designers' AND column_name = 'category'
+  ) THEN
+    ALTER TABLE designers ADD COLUMN category TEXT DEFAULT '設計';
+  END IF;
+END $$;
+
+-- categoryカラムにインデックス追加
+CREATE INDEX IF NOT EXISTS idx_designers_category ON designers(category);
+
+-- =====================================================
+-- PART 2: 設計担当者の追加（10名）
+-- =====================================================
+INSERT INTO designers (name, email, category) VALUES
+  ('箕浦 三四郎', 'minoura-s@g-house.osaka.jp', '設計'),
+  ('林 恭生', 'hayashi-t@g-house.osaka.jp', '設計'),
+  ('田中 聡', 'ts@g-house.osaka.jp', '設計'),
+  ('北村 晃平', 'kitamura-k@g-house.osaka.jp', '設計'),
+  ('高濱 洋文', 'takahama-h@g-house.osaka.jp', '設計'),
+  ('足立 雅哉', 'adachi-m@g-house.osaka.jp', '設計'),
+  ('内藤 智之', 'naito-s@g-house.osaka.jp', '設計'),
+  ('荘野 善宏', 'shono-y@g-house.osaka.jp', '設計'),
+  ('若狹 龍成', 'wakasa-r@g-house.osaka.jp', '設計'),
+  ('石井 義信', 'ishii-y@g-house.osaka.jp', '設計')
+ON CONFLICT (name) DO NOTHING;
+
+-- =====================================================
+-- PART 3: IC担当者の追加（9名）
+-- =====================================================
+INSERT INTO designers (name, email, category) VALUES
+  ('柳川 奈緒', 'yn@g-house.osaka.jp', 'IC'),
+  ('西川 由佳', 'ny@g-house.osaka.jp', 'IC'),
+  ('古久保 知佳子', 'furukubo-c@g-house.osaka.jp', 'IC'),
+  ('島田 真奈', 'shimada-m@g-house.osaka.jp', 'IC'),
+  ('吉川 侑希', 'yoshikawa-y@g-house.osaka.jp', 'IC'),
+  ('中川 千尋', 'nakagawa-c@g-house.osaka.jp', 'IC'),
+  ('今村 珠梨', 'imamura-s@g-house.osaka.jp', 'IC'),
+  ('浦川 千夏', 'urakawa-c@g-house.osaka.jp', 'IC'),
+  ('森永 凪子', 'morinaga-n@g-house.osaka.jp', 'IC')
 ON CONFLICT (name) DO NOTHING;
 
 -- =====================================================

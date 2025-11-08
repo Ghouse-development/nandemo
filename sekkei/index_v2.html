@@ -229,6 +229,18 @@ body {
   background: var(--bg-tertiary);
 }
 
+.designer-group-label {
+  width: 100%;
+  padding: 8px 12px;
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  border-left: 3px solid var(--primary-color);
+}
+
 .designer-tab.active {
   background: var(--primary-color);
   color: white;
@@ -1414,10 +1426,25 @@ function renderDesignerTabs() {
 
   let html = `<button class="designer-tab ${currentDesignerTab === 'ALL' ? 'active' : ''}" onclick="setDesignerTab('ALL')">全案件 (${activeCount})</button>`;
 
-  designers.forEach(designer => {
-    const count = projects.filter(p => p.assigned_to === designer.name && p.status !== 'completed').length;
-    html += `<button class="designer-tab ${currentDesignerTab === designer.name ? 'active' : ''}" onclick="setDesignerTab('${designer.name}')">${designer.name} (${count})</button>`;
-  });
+  // 設計担当
+  const sekkeiDesigners = designers.filter(d => d.category === '設計');
+  if (sekkeiDesigners.length > 0) {
+    html += '<div class="designer-group-label">設計担当</div>';
+    sekkeiDesigners.forEach(designer => {
+      const count = projects.filter(p => p.assigned_to === designer.name && p.status !== 'completed').length;
+      html += `<button class="designer-tab ${currentDesignerTab === designer.name ? 'active' : ''}" onclick="setDesignerTab('${designer.name}')">${designer.name} (${count})</button>`;
+    });
+  }
+
+  // IC担当
+  const icDesigners = designers.filter(d => d.category === 'IC');
+  if (icDesigners.length > 0) {
+    html += '<div class="designer-group-label">IC担当</div>';
+    icDesigners.forEach(designer => {
+      const count = projects.filter(p => p.assigned_to === designer.name && p.status !== 'completed').length;
+      html += `<button class="designer-tab ${currentDesignerTab === designer.name ? 'active' : ''}" onclick="setDesignerTab('${designer.name}')">${designer.name} (${count})</button>`;
+    });
+  }
 
   container.innerHTML = html;
 }
