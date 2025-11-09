@@ -5257,7 +5257,7 @@ function copyText(elementId) {
 }
 
 // ============================================
-// タスクからのメール作成機能
+// タスクからのメール作成機能（Gmail直接開く）
 // ============================================
 async function openEmailFromTask(projectId, taskKey) {
   const project = projects.find(p => p.id === projectId);
@@ -5266,18 +5266,27 @@ async function openEmailFromTask(projectId, taskKey) {
     return;
   }
 
-  // タスクに関連するテンプレートを取得
-  const mapping = taskMappings[taskKey];
-
-  // マッピングがない場合はテンプレート選択画面を表示
-  if (!mapping) {
-    showTemplateSelector(projectId, taskKey);
+  // タスク定義を取得
+  const taskDef = tasksV2.find(t => t.task_key === taskKey);
+  if (!taskDef) {
+    showToast('タスク定義が見つかりません', 'error');
     return;
   }
 
-  const template = emailTemplates.find(t => t.template_id === mapping);
-  if (!template) {
-    showToast('テンプレートが見つかりません', 'error');
+  // タスクに紐づいた業者を取得
+  const mappings = taskVendorMappings.filter(m => m.task_id === taskDef.id);
+  if (mappings.length === 0) {
+    showToast('このタスクに業者が紐づけられていません', 'error');
+    return;
+  }
+
+  // 業者情報を取得
+  const taskVendors = mappings
+    .map(m => vendorsV2.find(v => v.id === m.vendor_id))
+    .filter(v => v != null);
+
+  if (taskVendors.length === 0) {
+    showToast('業者情報が見つかりません', 'error');
     return;
   }
 
@@ -5285,12 +5294,45 @@ async function openEmailFromTask(projectId, taskKey) {
   const designer = designers.find(d => d.id === project.designer_id);
   const staffName = designer ? designer.name : '';
 
-  // モーダルコンテンツを作成
-  const composerHTML = createEmailComposer(project, template, staffName, taskKey);
-  document.getElementById('emailComposerContent').innerHTML = composerHTML;
+  // 現在日付から期日を設定（デフォルト：7日後）
+  const today = new Date();
+  const dueDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const dueDateStr = dueDate.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' }).replace('/', '月') + '日';
 
-  // モーダルを表示
-  document.getElementById('emailModal').classList.add('show');
+  // 最初の業者のテンプレートを使用（全業者が同じカテゴリなので）
+  const vendor = taskVendors[0];
+
+  // プレースホルダー置換
+  const replacePlaceholders = (text) => {
+    if (!text) return '';
+    return text
+      .replace(/\{customerName\}/g, project.customer)
+      .replace(/\{dueDate\}/g, dueDateStr)
+      .replace(/\{staffName\}/g, staffName)
+      .replace(/\{company\}/g, vendor.company)
+      .replace(/\{contact\}/g, vendor.contact || 'ご担当者様');
+  };
+
+  // 件名と本文を生成
+  const subject = replacePlaceholders(vendor.subject_format || `${project.customer}様邸 ${taskDef.task_name}`);
+  const body = replacePlaceholders(vendor.template_text || '');
+
+  // 全業者のメールアドレスをTo:に設定
+  const emailAddresses = taskVendors.map(v => v.email).filter(e => e).join(',');
+
+  if (!emailAddresses) {
+    showToast('メールアドレスが設定されていません', 'error');
+    return;
+  }
+
+  // Gmail URLを生成
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(emailAddresses)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  // Gmailを新しいタブで開く
+  window.open(gmailUrl, '_blank');
+
+  // トーストで通知
+  showToast('Gmailを開きました', 'success');
 }
 
 // テンプレート選択画面を表示
