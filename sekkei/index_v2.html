@@ -1736,6 +1736,14 @@ body {
             <div class="form-hint">JSON配列形式で入力してください。最初の要素は空文字列("")を推奨</div>
           </div>
         </div>
+
+        <div class="form-group">
+          <label class="form-label">紐づけ業者（複数選択可）</label>
+          <div id="taskVendorSelection" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 8px; border-radius: 4px;">
+            <!-- ベンダーのチェックボックスリストがここに表示される -->
+          </div>
+          <div class="form-hint">このタスクから直接メールを送信する業者を選択してください</div>
+        </div>
       </form>
     </div>
     <div class="modal-footer">
@@ -1902,6 +1910,9 @@ async function checkAuth() {
     document.getElementById('userAvatar').src = 'https://via.placeholder.com/32/4A90E2/FFFFFF?text=' + displayName.charAt(0).toUpperCase();
 
     await init();
+
+    // 初期化完了後にURL直接アクセスの処理を実行
+    handleHashChange();
   } else {
     console.log('❌ セッションなし - ログイン画面を表示');
     document.getElementById('loginContainer').style.display = 'flex';
@@ -2089,6 +2100,14 @@ async function init() {
     // 新システムのUI初期化
     populateVendorCategoryDropdown();
     populateProductDropdown();
+
+    // 新システムの各管理画面の初期描画
+    renderDesignerListInline();  // スタッフ管理
+    renderCategoryFilters();      // カテゴリフィルター
+    renderVendorsV2();            // 業者管理
+    renderCategoriesList();       // カテゴリ管理
+    renderTasksManagement();      // タスク管理
+    renderProductsList();         // 商品管理
 
     console.log('✅ 初期化完了');
     showStatus('保存済み', 'saved');
@@ -2889,6 +2908,7 @@ function openTaskModal(taskId = null) {
     document.getElementById('taskHasState').checked = task.has_state;
     document.getElementById('taskStateOptions').value = task.state_options ? JSON.stringify(task.state_options) : '';
     toggleTaskState();
+    populateTaskVendorSelection(taskId);
   } else {
     title.textContent = 'タスク追加';
     document.getElementById('taskForm').reset();
@@ -2897,9 +2917,40 @@ function openTaskModal(taskId = null) {
     document.getElementById('taskOrder').value = tasksV2.length + 1;
     document.getElementById('taskHasState').checked = false;
     toggleTaskState();
+    populateTaskVendorSelection(null);
   }
 
   modal.style.display = 'flex';
+}
+
+function populateTaskVendorSelection(taskId) {
+  const container = document.getElementById('taskVendorSelection');
+  if (!container) return;
+
+  // 現在のタスクに紐づいている業者IDリストを取得
+  const currentMappings = taskId ? taskVendorMappings.filter(m => m.task_id === taskId).map(m => m.vendor_id) : [];
+
+  // カテゴリごとにグループ化して表示
+  const categories = [...new Set(vendorsV2.map(v => v.vendor_categories?.name || '未分類'))].sort();
+
+  container.innerHTML = categories.map(category => {
+    const categoryVendors = vendorsV2.filter(v => (v.vendor_categories?.name || '未分類') === category);
+
+    return `
+      <div style="margin-bottom: 12px;">
+        <div style="font-weight: 600; color: #4A90E2; margin-bottom: 4px; font-size: 12px;">${category}</div>
+        ${categoryVendors.map(vendor => `
+          <label style="display: block; padding: 4px 0; cursor: pointer;">
+            <input type="checkbox"
+                   value="${vendor.id}"
+                   ${currentMappings.includes(vendor.id) ? 'checked' : ''}
+                   style="margin-right: 8px;">
+            ${vendor.company}
+          </label>
+        `).join('')}
+      </div>
+    `;
+  }).join('');
 }
 
 function closeTaskModal() {
@@ -2967,11 +3018,45 @@ async function saveTask() {
     return;
   }
 
+  // 業者紐づけの保存
+  const savedTaskId = id || result.data[0].id;
+  await saveTaskVendorMappings(savedTaskId);
+
   showStatus('保存完了', 'success');
   showToast(id ? 'タスクを更新しました' : 'タスクを追加しました', 'success');
   closeTaskModal();
   await loadTasksV2();
+  await loadTaskVendorMappings();
   renderTasksManagement();
+}
+
+async function saveTaskVendorMappings(taskId) {
+  // 選択された業者IDを取得
+  const checkboxes = document.querySelectorAll('#taskVendorSelection input[type="checkbox"]:checked');
+  const selectedVendorIds = Array.from(checkboxes).map(cb => cb.value);
+
+  // 既存の紐づけを全削除
+  await supabase
+    .from('task_vendor_mappings_v2')
+    .delete()
+    .eq('task_id', taskId);
+
+  // 新しい紐づけを作成
+  if (selectedVendorIds.length > 0) {
+    const mappings = selectedVendorIds.map(vendorId => ({
+      task_id: taskId,
+      vendor_id: vendorId
+    }));
+
+    const { error } = await supabase
+      .from('task_vendor_mappings_v2')
+      .insert(mappings);
+
+    if (error) {
+      console.error('業者紐づけ保存エラー:', error);
+      showToast('業者紐づけの保存に失敗しました', 'error');
+    }
+  }
 }
 
 function editTask(taskId) {
@@ -5293,11 +5378,7 @@ window.addEventListener('hashchange', handleHashChange);
 // ============================================
 window.addEventListener('DOMContentLoaded', () => {
   checkAuth();
-
-  // URL直接アクセスの処理
-  setTimeout(() => {
-    handleHashChange();
-  }, 500);
+  // URL直接アクセスの処理はcheckAuth() → init()完了後に自動実行される
 });
 </script>
 </body>
