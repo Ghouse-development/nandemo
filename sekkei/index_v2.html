@@ -2445,20 +2445,26 @@ async function loadVendorsV2() {
     success: !error,
     dataLength: data?.length || 0,
     error: error,
-    rawDataSample: data?.slice(0, 2)
+    rawData: data
   });
 
   if (error) {
     console.error('❌ 業者読み込みエラー:', error);
+    alert('業者データ読み込みエラー: ' + error.message);
+    vendorsV2 = [];
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    console.error('⚠️ CRITICAL: vendors_v2テーブルにデータが0件です！');
+    alert('⚠️ vendors_v2テーブルにデータが登録されていません。Supabaseで確認してください。');
     vendorsV2 = [];
     return;
   }
 
   vendorsV2 = data || [];
-  console.log('✅ 業者読み込み完了:', {
-    count: vendorsV2.length,
-    vendors: vendorsV2
-  });
+  console.log('✅ 業者読み込み完了:', vendorsV2.length, '件');
+  console.log('✅ 業者データ詳細:', vendorsV2);
 }
 
 function mergeVendorCategories() {
