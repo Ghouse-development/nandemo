@@ -4176,6 +4176,14 @@ function openProjectModal(projectId = null) {
   if (assignedToSelect) {
     assignedToSelect.innerHTML = '<option value="">選択してください</option>' +
       sekkeiDesigners.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+
+    // 新規案件の場合、現在選択中のタブの担当者を自動選択
+    if (!projectId && currentDesignerTab !== 'ALL') {
+      const currentDesigner = sekkeiDesigners.find(d => d.name === currentDesignerTab);
+      if (currentDesigner) {
+        assignedToSelect.value = currentDesigner.name;
+      }
+    }
   }
 
   // IC担当者（ICカテゴリのみ）を埋める
@@ -4207,6 +4215,8 @@ async function saveProject() {
   const icAssignee = document.getElementById('projectIcAssignee').value; // IC担当者（オプショナル）
   const specifications = document.getElementById('projectSpecifications').value;
   const memo = document.getElementById('projectMemo').value.trim();
+
+  console.log('💾 saveProject開始:', { customer, assignedTo, icAssignee, specifications });
 
   if (!customer || !assignedTo) {
     showToast('お客様名と担当設計士（設計）は必須です', 'error');
@@ -4285,9 +4295,14 @@ async function saveProject() {
       return;
     }
 
+    console.log('✅ 新規案件保存成功:', data[0]);
+    console.log('📊 assigned_to:', data[0].assigned_to);
+    console.log('📊 ic_assignee:', data[0].ic_assignee);
     projects.unshift(data[0]);
   }
 
+  console.log('🔄 renderDesignerTabs()とrenderProjects()を実行します');
+  console.log('📊 現在のprojects数:', projects.length);
   closeProjectModal();
   renderDesignerTabs();
   renderProjects();
