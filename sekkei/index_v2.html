@@ -1698,21 +1698,7 @@ body {
         <div class="form-group">
           <label class="form-label">メール本文</label>
           <textarea class="form-textarea" id="vendorTemplate" rows="8" placeholder="例:&#10;{company}&#10;{contact}&#10;&#10;いつもお世話になっております。"></textarea>
-          <div class="form-hint">使用可能：{company}, {contact}, {customerName}, {dueDate}, {staffName}, {specialContent}</div>
-        </div>
-
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="vendorHasSpecial" onchange="toggleSpecialContent()">
-            <span>特別コンテンツを使用する</span>
-          </label>
-        </div>
-
-        <div id="specialContentGroup" style="display: none;">
-          <div class="form-group">
-            <label class="form-label">デフォルト特別コンテンツ</label>
-            <textarea class="form-textarea" id="vendorSpecialContent" rows="3" placeholder="例：サッシプレゼン、開口部リスト、玄関プレゼン(C10 カームブラック)"></textarea>
-          </div>
+          <div class="form-hint">使用可能：{company}, {contact}, {customerName}, {dueDate}, {staffName}</div>
         </div>
       </form>
     </div>
@@ -2628,15 +2614,10 @@ function openVendorModalV2(vendorId = null) {
     document.getElementById('vendorCategory').value = vendor.category_id || '';
     document.getElementById('vendorSubject').value = vendor.subject_format || '';
     document.getElementById('vendorTemplate').value = vendor.template_text || '';
-    document.getElementById('vendorHasSpecial').checked = vendor.has_special_content || false;
-    document.getElementById('vendorSpecialContent').value = vendor.default_special_content || '';
-    toggleSpecialContent();
   } else {
     title.textContent = '業者追加';
     document.getElementById('vendorForm').reset();
     document.getElementById('vendorId').value = '';
-    document.getElementById('vendorHasSpecial').checked = false;
-    toggleSpecialContent();
   }
 
   modal.style.display = 'flex';
@@ -2644,12 +2625,6 @@ function openVendorModalV2(vendorId = null) {
 
 function closeVendorModalV2() {
   document.getElementById('vendorModalV2').style.display = 'none';
-}
-
-function toggleSpecialContent() {
-  const hasSpecial = document.getElementById('vendorHasSpecial').checked;
-  const specialGroup = document.getElementById('specialContentGroup');
-  specialGroup.style.display = hasSpecial ? 'block' : 'none';
 }
 
 async function saveVendorV2() {
@@ -2661,8 +2636,6 @@ async function saveVendorV2() {
   const categoryId = document.getElementById('vendorCategory').value;
   const subjectFormat = document.getElementById('vendorSubject').value.trim();
   const templateText = document.getElementById('vendorTemplate').value.trim();
-  const hasSpecial = document.getElementById('vendorHasSpecial').checked;
-  const specialContent = document.getElementById('vendorSpecialContent').value.trim();
 
   if (!company) {
     showToast('会社名を入力してください', 'error');
@@ -2678,9 +2651,7 @@ async function saveVendorV2() {
     email: email || null,
     category_id: categoryId || null,
     subject_format: subjectFormat || null,
-    template_text: templateText || null,
-    has_special_content: hasSpecial,
-    default_special_content: hasSpecial ? specialContent : null
+    template_text: templateText || null
   };
 
   let result;
@@ -2751,23 +2722,26 @@ function renderCategoriesList() {
     return;
   }
 
+  // 表示順でソート
+  const sortedCategories = [...vendorCategories].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
   container.innerHTML = `
     <div class="table-container">
       <table class="table">
         <thead>
           <tr>
-            <th>表示順</th>
+            <th style="width: 60px;">順</th>
             <th>カテゴリ名</th>
-            <th>業者数</th>
-            <th>操作</th>
+            <th style="width: 100px;">業者数</th>
+            <th style="width: 180px;">操作</th>
           </tr>
         </thead>
         <tbody>
-          ${vendorCategories.map(cat => {
+          ${sortedCategories.map(cat => {
             const count = vendorsV2.filter(v => v.category_id === cat.id).length;
             return `
-              <tr>
-                <td>${cat.display_order}</td>
+              <tr draggable="true" ondragstart="handleCategoryDragStart(event, '${cat.id}')" ondragover="handleCategoryDragOver(event)" ondrop="handleCategoryDrop(event, '${cat.id}')" style="cursor: move;">
+                <td><span style="color: var(--text-muted);">⋮⋮</span> ${cat.display_order}</td>
                 <td><strong>${cat.name}</strong></td>
                 <td>${count}社</td>
                 <td>
@@ -2888,6 +2862,79 @@ async function deleteCategory(categoryId) {
   await loadVendorCategories();
   renderCategoriesList();
   renderCategoryFilters();
+}
+
+// ドラッグ&ドロップでカテゴリの表示順を変更
+let draggedCategoryId = null;
+
+function handleCategoryDragStart(event, categoryId) {
+  draggedCategoryId = categoryId;
+  event.dataTransfer.effectAllowed = 'move';
+  event.target.style.opacity = '0.5';
+}
+
+function handleCategoryDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  return false;
+}
+
+async function handleCategoryDrop(event, targetCategoryId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!draggedCategoryId || draggedCategoryId === targetCategoryId) {
+    resetCategoryDragState();
+    return;
+  }
+
+  const draggedCategory = vendorCategories.find(c => c.id === draggedCategoryId);
+  const targetCategory = vendorCategories.find(c => c.id === targetCategoryId);
+
+  if (!draggedCategory || !targetCategory) {
+    resetCategoryDragState();
+    return;
+  }
+
+  // 表示順を入れ替え
+  const draggedOrder = draggedCategory.display_order;
+  const targetOrder = targetCategory.display_order;
+
+  showStatus('並び替え中...', 'saving');
+
+  // 両方のカテゴリの表示順を更新
+  const updates = [
+    supabase.from('vendor_categories').update({ display_order: targetOrder }).eq('id', draggedCategoryId),
+    supabase.from('vendor_categories').update({ display_order: draggedOrder }).eq('id', targetCategoryId)
+  ];
+
+  const results = await Promise.all(updates);
+
+  if (results.some(r => r.error)) {
+    showStatus('並び替え失敗', 'error');
+    showToast('並び替えに失敗しました', 'error');
+    resetCategoryDragState();
+    return;
+  }
+
+  // ローカルデータも更新
+  draggedCategory.display_order = targetOrder;
+  targetCategory.display_order = draggedOrder;
+
+  // 再描画
+  renderCategoriesList();
+  renderCategoryFilters();
+  showStatus('並び替え完了', 'success');
+  showToast('表示順を変更しました', 'success');
+  resetCategoryDragState();
+}
+
+function resetCategoryDragState() {
+  draggedCategoryId = null;
+  // すべての行の透明度をリセット
+  document.querySelectorAll('#categoriesGrid tr[draggable]').forEach(tr => {
+    tr.style.opacity = '1';
+  });
 }
 
 function renderCategoryFilters() {
@@ -3923,6 +3970,16 @@ function renderProjectCard(project) {
   // 担当者のカテゴリに応じたタスクリストを取得（新システム）
   const tasks = getTasksForAssignee(project.assigned_to);
 
+  // 全タスク完了チェック: すべてのタスクが完了し、状態管理があるタスクは全て「保存済み」
+  const canArchive = tasks.every(taskDef => {
+    const task = progressData[taskDef.task_key] || { completed: false, state: '' };
+    // チェックボックスが完了していること
+    if (!task.completed) return false;
+    // 状態管理があるタスクは「保存済み」であること
+    if (taskDef.has_state && task.state !== '保存済') return false;
+    return true;
+  });
+
   const tasksHtml = tasks.map(taskDef => {
     const key = taskDef.task_key;
     const task = progressData[key] || { completed: false, date: '', state: '' };
@@ -3988,7 +4045,7 @@ function renderProjectCard(project) {
         <div style="display: flex; gap: 8px;">
           ${project.is_archived
             ? `<button class="btn btn-success btn-small" onclick="toggleArchive('${project.id}', false)">復元</button>`
-            : `<button class="btn btn-warning btn-small" onclick="toggleArchive('${project.id}', true)">完了済みにする</button>`
+            : canArchive ? `<button class="btn btn-warning btn-small" onclick="toggleArchive('${project.id}', true)">完了済みにする</button>` : ''
           }
           <button class="btn btn-ghost btn-small" onclick="editProject('${project.id}')">編集</button>
         </div>
@@ -4214,7 +4271,7 @@ async function saveProject() {
       memo,
       status: 'active',
       progress: blankProgress,
-      created_by: currentUser.id
+      created_by: currentUser?.id || null
     };
 
     const { data, error } = await supabase
