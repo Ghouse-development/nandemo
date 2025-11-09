@@ -3985,12 +3985,41 @@ function renderDesignerTabs() {
   if (icDesigners.length > 0) {
     html += '<div class="designer-group-label">IC担当</div>';
     icDesigners.forEach(designer => {
-      const count = projects.filter(p => {
+      const designerProjects = projects.filter(p => {
         const assigned = (p.assigned_to || '').trim();
         const icAssigned = (p.ic_assignee || '').trim();
         const designerName = designer.name.trim();
         return (assigned === designerName || icAssigned === designerName) && p.status !== 'completed' && !p.is_archived;
-      }).length;
+      });
+      const count = designerProjects.length;
+
+      console.log(`🔍 ${designer.name}の案件カウント(IC):`, {
+        designerName: `"${designer.name}"`,
+        designerNameLength: designer.name.length,
+        count: count,
+        matchingProjects: designerProjects.map(p => ({
+          customer: p.customer,
+          assigned_to: `"${p.assigned_to}"`,
+          ic_assignee: `"${p.ic_assignee}"`,
+          ic_assignee_trimmed: `"${(p.ic_assignee || '').trim()}"`,
+          ic_assignee_length: p.ic_assignee?.length,
+          match: (p.ic_assignee || '').trim() === designer.name.trim()
+        })),
+        allProjects: projects.map(p => ({
+          customer: p.customer,
+          assigned_to: `"${p.assigned_to}"`,
+          ic_assignee: `"${p.ic_assignee}"`,
+          ic_assignee_trimmed: `"${(p.ic_assignee || '').trim()}"`,
+          status: p.status,
+          is_archived: p.is_archived,
+          matchAssigned: (p.assigned_to || '').trim() === designer.name.trim(),
+          matchIC: (p.ic_assignee || '').trim() === designer.name.trim(),
+          statusOK: p.status !== 'completed',
+          archivedOK: !p.is_archived,
+          finalMatch: ((p.assigned_to || '').trim() === designer.name.trim() || (p.ic_assignee || '').trim() === designer.name.trim()) && p.status !== 'completed' && !p.is_archived
+        }))
+      });
+
       html += `<button class="designer-tab ${currentDesignerTab === designer.name ? 'active' : ''}" onclick="setDesignerTab('${designer.name}')">${designer.name} (${count})</button>`;
     });
   }
