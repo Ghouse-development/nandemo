@@ -1243,6 +1243,61 @@ body {
   overflow-y: auto;
   max-height: calc(100vh - 300px);
 }
+
+/* 業者カード */
+.vendor-card {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vendor-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  border-color: var(--primary-color);
+}
+
+.vendor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--bg-secondary);
+}
+
+.vendor-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.vendor-info {
+  margin-bottom: 16px;
+}
+
+.vendor-info > div {
+  padding: 6px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.vendor-info strong {
+  color: var(--text-primary);
+  font-weight: 600;
+  min-width: 80px;
+  display: inline-block;
+}
+
+.vendor-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
 </style>
 </head>
 <body>
@@ -1337,6 +1392,11 @@ body {
               <option>LACIE</option>
               <option>LIFEリミ</option>
               <option>LIFE+リミ</option>
+            </select>
+            <select class="select" id="archiveFilter" onchange="renderProjects()" style="margin-left: 12px;">
+              <option value="active">アクティブのみ</option>
+              <option value="all">すべて表示</option>
+              <option value="archived">完了済みのみ</option>
             </select>
           </div>
           <div class="toolbar-right">
@@ -3641,7 +3701,12 @@ function renderProjects() {
     if (currentDesignerTab !== 'ALL' &&
         p.assigned_to !== currentDesignerTab &&
         p.ic_assignee !== currentDesignerTab) return false;
-    if (p.status === 'completed') return false;
+
+    // アーカイブフィルター
+    const archiveFilter = document.getElementById('archiveFilter').value;
+    const isArchived = p.is_archived || false;
+    if (archiveFilter === 'active' && isArchived) return false;
+    if (archiveFilter === 'archived' && !isArchived) return false;
 
     const query = document.getElementById('searchQuery').value.toLowerCase();
     if (query && !p.customer.toLowerCase().includes(query) && !(p.memo || '').toLowerCase().includes(query)) return false;
@@ -3724,13 +3789,20 @@ function renderProjectCard(project) {
           <div class="card-title">
             ${project.customer}
             <span class="badge badge-primary">${project.specifications || 'LIFE'}</span>
+            ${project.is_archived ? '<span class="badge badge-success">完了済み</span>' : ''}
           </div>
           <div class="card-subtitle">
             設計：${project.assigned_to}
             ${project.ic_assignee ? ` / IC：${project.ic_assignee}` : ''}
           </div>
         </div>
-        <button class="btn btn-ghost btn-small" onclick="editProject('${project.id}')">編集</button>
+        <div style="display: flex; gap: 8px;">
+          ${project.is_archived
+            ? `<button class="btn btn-success btn-small" onclick="toggleArchive('${project.id}', false)">復元</button>`
+            : `<button class="btn btn-warning btn-small" onclick="toggleArchive('${project.id}', true)">完了済みにする</button>`
+          }
+          <button class="btn btn-ghost btn-small" onclick="editProject('${project.id}')">編集</button>
+        </div>
       </div>
       <div class="progress-section">
         <div class="progress-header">
@@ -4003,6 +4075,40 @@ async function deleteProject(projectId) {
   showToast('案件を削除しました', 'success');
 }
 
+async function toggleArchive(projectId, isArchived) {
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
+
+  const message = isArchived ? '完了済みにしますか？' : '案件を復元しますか？';
+  if (!confirm(message)) return;
+
+  showStatus('更新中...', 'saving');
+
+  const updateData = {
+    is_archived: isArchived,
+    archived_at: isArchived ? new Date().toISOString() : null
+  };
+
+  const { error } = await supabase
+    .from('projects')
+    .update(updateData)
+    .eq('id', projectId);
+
+  if (error) {
+    showStatus('エラー', 'error');
+    showToast('更新に失敗しました: ' + error.message, 'error');
+    return;
+  }
+
+  // ローカルデータを更新
+  project.is_archived = isArchived;
+  project.archived_at = updateData.archived_at;
+
+  renderProjects();
+  showStatus('保存済み', 'saved');
+  showToast(isArchived ? '案件を完了済みにしました' : '案件を復元しました', 'success');
+}
+
 // ============================================
 // 設計士管理
 // ============================================
@@ -4133,6 +4239,9 @@ function renderDesignerListInline() {
     sekkeiDesigners.forEach(designer => {
       const count = projects.filter(p => p.assigned_to === designer.name).length;
       const emailDisplay = designer.email && !designer.email.includes('@temp.local') ? designer.email : '<span style="color: var(--text-muted);">未設定</span>';
+      // 認証設定は管理者または本人のみ
+      const canManageAuth = currentUserCategory === 'admin' || designer.id === currentDesigner?.id;
+      const authButton = canManageAuth ? `<button class="btn btn-secondary btn-small" onclick="openDesignerAuthModal('${designer.id}')" style="margin-right: 8px;">🔑 認証設定</button>` : '';
       html += `
         <tr class="draggable-row" draggable="true" data-designer-id="${designer.id}" data-category="設計">
           <td><span class="drag-handle">≡</span></td>
@@ -4140,7 +4249,7 @@ function renderDesignerListInline() {
           <td>${emailDisplay}</td>
           <td>${count}件</td>
           <td>
-            <button class="btn btn-secondary btn-small" onclick="openDesignerAuthModal('${designer.id}')" style="margin-right: 8px;">🔑 認証設定</button>
+            ${authButton}
             <button class="btn btn-danger btn-small" onclick="deleteDesignerInline('${designer.id}')">削除</button>
           </td>
         </tr>
@@ -4156,6 +4265,9 @@ function renderDesignerListInline() {
     icDesigners.forEach(designer => {
       const count = projects.filter(p => p.assigned_to === designer.name).length;
       const emailDisplay = designer.email && !designer.email.includes('@temp.local') ? designer.email : '<span style="color: var(--text-muted);">未設定</span>';
+      // 認証設定は管理者または本人のみ
+      const canManageAuth = currentUserCategory === 'admin' || designer.id === currentDesigner?.id;
+      const authButton = canManageAuth ? `<button class="btn btn-secondary btn-small" onclick="openDesignerAuthModal('${designer.id}')" style="margin-right: 8px;">🔑 認証設定</button>` : '';
       html += `
         <tr class="draggable-row" draggable="true" data-designer-id="${designer.id}" data-category="IC">
           <td><span class="drag-handle">≡</span></td>
@@ -4163,7 +4275,7 @@ function renderDesignerListInline() {
           <td>${emailDisplay}</td>
           <td>${count}件</td>
           <td>
-            <button class="btn btn-secondary btn-small" onclick="openDesignerAuthModal('${designer.id}')" style="margin-right: 8px;">🔑 認証設定</button>
+            ${authButton}
             <button class="btn btn-danger btn-small" onclick="deleteDesignerInline('${designer.id}')">削除</button>
           </td>
         </tr>
