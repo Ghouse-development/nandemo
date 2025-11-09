@@ -3704,7 +3704,11 @@ function renderSidebar() {
   if (sekkeiDesigners.length > 0) {
     html += '<div class="sidebar-section"><div class="sidebar-section-title">📐 設計担当</div>';
     sekkeiDesigners.forEach(designer => {
-      const count = projects.filter(p => p.assigned_to === designer.name && p.status !== 'completed').length;
+      const count = projects.filter(p => {
+        const assigned = (p.assigned_to || '').trim();
+        const designerName = designer.name.trim();
+        return assigned === designerName && p.status !== 'completed' && !p.is_archived;
+      }).length;
       html += `
         <div class="sidebar-item ${currentDesignerTab === designer.name ? 'active' : ''}" onclick="selectDesigner('${designer.name}')">
           <span class="sidebar-item-label">${designer.name}</span>
@@ -3718,7 +3722,12 @@ function renderSidebar() {
   if (icDesigners.length > 0) {
     html += '<div class="sidebar-section"><div class="sidebar-section-title">🎨 IC担当</div>';
     icDesigners.forEach(designer => {
-      const count = projects.filter(p => p.assigned_to === designer.name && p.status !== 'completed').length;
+      const count = projects.filter(p => {
+        const assigned = (p.assigned_to || '').trim();
+        const icAssigned = (p.ic_assignee || '').trim();
+        const designerName = designer.name.trim();
+        return (assigned === designerName || icAssigned === designerName) && p.status !== 'completed' && !p.is_archived;
+      }).length;
       html += `
         <div class="sidebar-item ${currentDesignerTab === designer.name ? 'active' : ''}" onclick="selectDesigner('${designer.name}')">
           <span class="sidebar-item-label">${designer.name}</span>
