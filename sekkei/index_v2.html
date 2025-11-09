@@ -1401,7 +1401,6 @@ body {
             </select>
           </div>
           <div class="toolbar-right">
-            <button class="btn btn-ghost" onclick="exportJSON()">JSON出力</button>
             <button class="btn btn-ghost" onclick="exportCSV()">CSV出力</button>
             <button class="btn btn-primary" onclick="openProjectModal()">+ 案件追加</button>
       </div>
@@ -3930,10 +3929,10 @@ function renderDesignerTabs() {
   }
 
   console.log('🎨 担当者タブ描画:', {
-    総スタッフ数: designers.length,
-    設計担当: designers.filter(d => d.category === '設計').length,
-    IC担当: designers.filter(d => d.category === 'IC').length,
-    案件数: projects.length
+    '総スタッフ数': designers.length,
+    '設計担当': designers.filter(d => d.category === '設計').length,
+    'IC担当': designers.filter(d => d.category === 'IC').length,
+    '案件数': projects.length
   });
 
   const activeCount = projects.filter(p => p.status !== 'completed').length;
@@ -6151,24 +6150,6 @@ function populateStandaloneTemplateSelect() {
 // ============================================
 // エクスポート機能
 // ============================================
-function exportJSON() {
-  if (projects.length === 0) {
-    showToast('エクスポートする案件がありません', 'error');
-    return;
-  }
-
-  const dataStr = JSON.stringify(projects, null, 2);
-  const dataBlob = new Blob([dataStr], { type: 'application/json' });
-  const url = URL.createObjectURL(dataBlob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `projects_${new Date().toISOString().split('T')[0]}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
-
-  showToast('JSONファイルをエクスポートしました', 'success');
-}
-
 function exportCSV() {
   if (projects.length === 0) {
     showToast('エクスポートする案件がありません', 'error');
