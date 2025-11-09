@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>設計・IC業務管理システム | Gハウス</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🏠</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2009,7 +2010,7 @@ async function checkAuth() {
     document.getElementById('userName').textContent = displayName;
 
     // デフォルトアバターを設定
-    document.getElementById('userAvatar').src = 'https://via.placeholder.com/32/4A90E2/FFFFFF?text=' + displayName.charAt(0).toUpperCase();
+    document.getElementById('userAvatar').src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=4A90E2&color=fff&size=32';
 
     await init();
 
@@ -2066,7 +2067,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 
     const displayName = currentUser.email.split('@')[0];
     document.getElementById('userName').textContent = displayName;
-    document.getElementById('userAvatar').src = 'https://via.placeholder.com/32/4A90E2/FFFFFF?text=' + displayName.charAt(0).toUpperCase();
+    document.getElementById('userAvatar').src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=4A90E2&color=fff&size=32';
 
     await init();
     isAuthProcessing = false;
@@ -4184,18 +4185,16 @@ function openProjectModal(projectId = null) {
   console.log('🎯 modal要素:', modal);
   console.log('🎯 title要素:', title);
 
+  let project = null;
   if (projectId) {
-    const project = projects.find(p => p.id === projectId);
+    project = projects.find(p => p.id === projectId);
     title.textContent = '案件編集';
     document.getElementById('projectCustomer').value = project.customer;
-    document.getElementById('projectAssignedTo').value = project.assigned_to;
-    document.getElementById('projectIcAssignee').value = project.ic_assignee || '';
     document.getElementById('projectSpecifications').value = project.specifications || 'LIFE';
     document.getElementById('projectMemo').value = project.memo || '';
   } else {
     title.textContent = '案件追加';
     document.getElementById('projectCustomer').value = '';
-    document.getElementById('projectIcAssignee').value = '';
     document.getElementById('projectSpecifications').value = 'LIFE';
     document.getElementById('projectMemo').value = '';
   }
@@ -4212,8 +4211,12 @@ function openProjectModal(projectId = null) {
     assignedToSelect.innerHTML = '<option value="">選択してください</option>' +
       sekkeiDesigners.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
 
-    // 新規案件の場合、現在選択中のタブの担当者を自動選択
-    if (!projectId && currentDesignerTab !== 'ALL') {
+    // 値を設定（innerHTML後に実行）
+    if (projectId && project) {
+      // 編集時: 既存の担当者を選択
+      assignedToSelect.value = project.assigned_to;
+    } else if (currentDesignerTab !== 'ALL') {
+      // 新規案件の場合、現在選択中のタブの担当者を自動選択
       const currentDesigner = sekkeiDesigners.find(d => d.name === currentDesignerTab);
       if (currentDesigner) {
         assignedToSelect.value = currentDesigner.name;
@@ -4232,6 +4235,12 @@ function openProjectModal(projectId = null) {
   if (icAssigneeSelect) {
     icAssigneeSelect.innerHTML = '<option value="">未定</option>' +
       icDesigners.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+
+    // 値を設定（innerHTML後に実行）
+    if (projectId && project) {
+      // 編集時: 既存のIC担当者を選択
+      icAssigneeSelect.value = project.ic_assignee || '';
+    }
   }
 
   console.log('🎬 モーダルを表示します...');
