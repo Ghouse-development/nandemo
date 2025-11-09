@@ -1464,9 +1464,18 @@ body {
         <label class="form-label">お客様名 *</label>
         <input type="text" class="form-input" id="projectCustomer" placeholder="例：田中太郎様">
       </div>
-      <div class="form-group">
-        <label class="form-label">担当設計士 *</label>
-        <select class="form-select" id="projectAssignedTo"></select>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">担当設計士（設計） *</label>
+          <select class="form-select" id="projectAssignedTo"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">担当設計士（IC）</label>
+          <select class="form-select" id="projectIcAssignee">
+            <option value="">未定</option>
+          </select>
+          <div class="form-hint" style="font-size: 11px;">後から追加可能</div>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">商品</label>
@@ -1749,6 +1758,47 @@ body {
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeTaskModal()">キャンセル</button>
       <button class="btn btn-primary" onclick="saveTask()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル：スタッフ認証設定 -->
+<div id="designerAuthModal" class="modal">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <h2 class="modal-title">🔑 スタッフ認証設定</h2>
+      <button class="close" onclick="closeDesignerAuthModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="designerAuthForm">
+        <input type="hidden" id="authDesignerId">
+
+        <div class="form-group">
+          <label class="form-label">スタッフ名</label>
+          <input type="text" class="form-input" id="authDesignerName" disabled>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">メールアドレス（ログインID） *</label>
+          <input type="email" class="form-input" id="authDesignerEmail" placeholder="例：yamada@ghouse.jp" required>
+          <div class="form-hint">このメールアドレスでログインできるようになります</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">パスワード *</label>
+          <input type="password" class="form-input" id="authDesignerPassword" placeholder="8文字以上" required>
+          <div class="form-hint">8文字以上で設定してください</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">パスワード（確認） *</label>
+          <input type="password" class="form-input" id="authDesignerPasswordConfirm" placeholder="もう一度入力">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDesignerAuthModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveDesignerAuth()">保存</button>
     </div>
   </div>
 </div>
@@ -3532,7 +3582,10 @@ function renderProjects() {
   const emptyState = document.getElementById('emptyProjects');
 
   let filtered = projects.filter(p => {
-    if (currentDesignerTab !== 'ALL' && p.assigned_to !== currentDesignerTab) return false;
+    // 担当者フィルター（設計またはIC担当者）
+    if (currentDesignerTab !== 'ALL' &&
+        p.assigned_to !== currentDesignerTab &&
+        p.ic_assignee !== currentDesignerTab) return false;
     if (p.status === 'completed') return false;
 
     const query = document.getElementById('searchQuery').value.toLowerCase();
@@ -3605,7 +3658,10 @@ function renderProjectCard(project) {
             ${project.customer}
             <span class="badge badge-primary">${project.specifications || 'LIFE'}</span>
           </div>
-          <div class="card-subtitle">担当：${project.assigned_to}</div>
+          <div class="card-subtitle">
+            設計：${project.assigned_to}
+            ${project.ic_assignee ? ` / IC：${project.ic_assignee}` : ''}
+          </div>
         </div>
         <button class="btn btn-ghost btn-small" onclick="editProject('${project.id}')">編集</button>
       </div>
@@ -3698,29 +3754,61 @@ async function updateTaskState(projectId, taskKey, state) {
 }
 
 function openProjectModal(projectId = null) {
+  console.log('📝 openProjectModal() 呼び出し:', projectId);
+  console.log('👥 designers配列:', designers);
+
   editingProjectId = projectId;
   const modal = document.getElementById('projectModal');
   const title = document.getElementById('projectModalTitle');
+
+  console.log('🎯 modal要素:', modal);
+  console.log('🎯 title要素:', title);
 
   if (projectId) {
     const project = projects.find(p => p.id === projectId);
     title.textContent = '案件編集';
     document.getElementById('projectCustomer').value = project.customer;
     document.getElementById('projectAssignedTo').value = project.assigned_to;
+    document.getElementById('projectIcAssignee').value = project.ic_assignee || '';
     document.getElementById('projectSpecifications').value = project.specifications || 'LIFE';
     document.getElementById('projectMemo').value = project.memo || '';
   } else {
     title.textContent = '案件追加';
     document.getElementById('projectCustomer').value = '';
+    document.getElementById('projectIcAssignee').value = '';
     document.getElementById('projectSpecifications').value = 'LIFE';
     document.getElementById('projectMemo').value = '';
   }
 
-  const assignedToSelect = document.getElementById('projectAssignedTo');
-  assignedToSelect.innerHTML = '<option value="">選択してください</option>' +
-    designers.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+  // 設計担当者（設計カテゴリのみ）を埋める
+  console.log('🔧 設計担当者をフィルタリング中...');
+  const sekkeiDesigners = designers.filter(d => d.category === '設計');
+  console.log('✅ 設計担当者:', sekkeiDesigners);
 
+  const assignedToSelect = document.getElementById('projectAssignedTo');
+  console.log('🎯 assignedToSelect要素:', assignedToSelect);
+
+  if (assignedToSelect) {
+    assignedToSelect.innerHTML = '<option value="">選択してください</option>' +
+      sekkeiDesigners.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+  }
+
+  // IC担当者（ICカテゴリのみ）を埋める
+  console.log('🔧 IC担当者をフィルタリング中...');
+  const icDesigners = designers.filter(d => d.category === 'IC');
+  console.log('✅ IC担当者:', icDesigners);
+
+  const icAssigneeSelect = document.getElementById('projectIcAssignee');
+  console.log('🎯 icAssigneeSelect要素:', icAssigneeSelect);
+
+  if (icAssigneeSelect) {
+    icAssigneeSelect.innerHTML = '<option value="">未定</option>' +
+      icDesigners.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+  }
+
+  console.log('🎬 モーダルを表示します...');
   modal.classList.add('show');
+  console.log('✅ openProjectModal() 完了');
 }
 
 function closeProjectModal() {
@@ -3731,19 +3819,24 @@ function closeProjectModal() {
 async function saveProject() {
   const customer = document.getElementById('projectCustomer').value.trim();
   const assignedTo = document.getElementById('projectAssignedTo').value;
+  const icAssignee = document.getElementById('projectIcAssignee').value; // IC担当者（オプショナル）
   const specifications = document.getElementById('projectSpecifications').value;
   const memo = document.getElementById('projectMemo').value.trim();
 
   if (!customer || !assignedTo) {
-    showToast('お客様名と担当設計士は必須です', 'error');
+    showToast('お客様名と担当設計士（設計）は必須です', 'error');
     return;
   }
 
   showStatus('保存中...', 'saving');
 
-  // 担当設計士のIDを取得
+  // 担当設計士（設計）のIDを取得
   const designer = designers.find(d => d.name === assignedTo);
   const designerId = designer ? designer.id : null;
+
+  // IC担当者のIDを取得（空文字列の場合はnull）
+  const icDesigner = icAssignee ? designers.find(d => d.name === icAssignee) : null;
+  const icDesignerId = icDesigner ? icDesigner.id : null;
 
   const blankProgress = {};
   Object.keys(TASK_NAMES).forEach(key => {
@@ -3758,6 +3851,8 @@ async function saveProject() {
         customer,
         assigned_to: assignedTo,
         designer_id: designerId,
+        ic_assignee: icAssignee || null,
+        ic_designer_id: icDesignerId,
         specifications,
         memo,
         updated_at: new Date().toISOString()
@@ -3770,13 +3865,23 @@ async function saveProject() {
       return;
     }
 
-    Object.assign(project, { customer, assigned_to: assignedTo, specifications, memo, updated_at: new Date().toISOString() });
+    Object.assign(project, {
+      customer,
+      assigned_to: assignedTo,
+      ic_assignee: icAssignee || null,
+      ic_designer_id: icDesignerId,
+      specifications,
+      memo,
+      updated_at: new Date().toISOString()
+    });
   } else {
     const newProject = {
       uid: 'proj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
       customer,
       assigned_to: assignedTo,
       designer_id: designerId,
+      ic_assignee: icAssignee || null,
+      ic_designer_id: icDesignerId,
       specifications,
       memo,
       status: 'active',
@@ -3957,15 +4062,20 @@ function renderDesignerListInline() {
   // 設計担当
   if (sekkeiDesigners.length > 0) {
     html += '<h4 style="margin: 20px 0 12px; color: var(--primary-color);">📐 設計担当</h4>';
-    html += '<div class="table-container"><table class="table"><thead><tr><th width="40"></th><th>スタッフ名</th><th>担当案件数</th><th>操作</th></tr></thead><tbody id="sekkeiTbody">';
+    html += '<div class="table-container"><table class="table"><thead><tr><th width="40"></th><th>スタッフ名</th><th>メールアドレス</th><th>担当案件数</th><th>操作</th></tr></thead><tbody id="sekkeiTbody">';
     sekkeiDesigners.forEach(designer => {
       const count = projects.filter(p => p.assigned_to === designer.name).length;
+      const emailDisplay = designer.email && !designer.email.includes('@temp.local') ? designer.email : '<span style="color: var(--text-muted);">未設定</span>';
       html += `
         <tr class="draggable-row" draggable="true" data-designer-id="${designer.id}" data-category="設計">
           <td><span class="drag-handle">≡</span></td>
           <td><strong>${designer.name}</strong></td>
+          <td>${emailDisplay}</td>
           <td>${count}件</td>
-          <td><button class="btn btn-danger btn-small" onclick="deleteDesignerInline('${designer.id}')">削除</button></td>
+          <td>
+            <button class="btn btn-secondary btn-small" onclick="openDesignerAuthModal('${designer.id}')" style="margin-right: 8px;">🔑 認証設定</button>
+            <button class="btn btn-danger btn-small" onclick="deleteDesignerInline('${designer.id}')">削除</button>
+          </td>
         </tr>
       `;
     });
@@ -3975,15 +4085,20 @@ function renderDesignerListInline() {
   // IC担当
   if (icDesigners.length > 0) {
     html += '<h4 style="margin: 20px 0 12px; color: var(--success-color);">🎨 IC担当</h4>';
-    html += '<div class="table-container"><table class="table"><thead><tr><th width="40"></th><th>スタッフ名</th><th>担当案件数</th><th>操作</th></tr></thead><tbody id="icTbody">';
+    html += '<div class="table-container"><table class="table"><thead><tr><th width="40"></th><th>スタッフ名</th><th>メールアドレス</th><th>担当案件数</th><th>操作</th></tr></thead><tbody id="icTbody">';
     icDesigners.forEach(designer => {
       const count = projects.filter(p => p.assigned_to === designer.name).length;
+      const emailDisplay = designer.email && !designer.email.includes('@temp.local') ? designer.email : '<span style="color: var(--text-muted);">未設定</span>';
       html += `
         <tr class="draggable-row" draggable="true" data-designer-id="${designer.id}" data-category="IC">
           <td><span class="drag-handle">≡</span></td>
           <td><strong>${designer.name}</strong></td>
+          <td>${emailDisplay}</td>
           <td>${count}件</td>
-          <td><button class="btn btn-danger btn-small" onclick="deleteDesignerInline('${designer.id}')">削除</button></td>
+          <td>
+            <button class="btn btn-secondary btn-small" onclick="openDesignerAuthModal('${designer.id}')" style="margin-right: 8px;">🔑 認証設定</button>
+            <button class="btn btn-danger btn-small" onclick="deleteDesignerInline('${designer.id}')">削除</button>
+          </td>
         </tr>
       `;
     });
@@ -4066,6 +4181,125 @@ async function deleteDesignerInline(designerId) {
   renderSidebar();
   showStatus('保存済み', 'saved');
   showToast('スタッフを削除しました', 'success');
+}
+
+// ============================================
+// スタッフ認証設定
+// ============================================
+function openDesignerAuthModal(designerId) {
+  const designer = designers.find(d => d.id === designerId);
+  if (!designer) return;
+
+  document.getElementById('authDesignerId').value = designer.id;
+  document.getElementById('authDesignerName').value = designer.name;
+  document.getElementById('authDesignerEmail').value = designer.email && !designer.email.includes('@temp.local') ? designer.email : '';
+  document.getElementById('authDesignerPassword').value = '';
+  document.getElementById('authDesignerPasswordConfirm').value = '';
+
+  document.getElementById('designerAuthModal').classList.add('show');
+}
+
+function closeDesignerAuthModal() {
+  document.getElementById('designerAuthModal').classList.remove('show');
+}
+
+async function saveDesignerAuth() {
+  const designerId = document.getElementById('authDesignerId').value;
+  const email = document.getElementById('authDesignerEmail').value.trim();
+  const password = document.getElementById('authDesignerPassword').value;
+  const passwordConfirm = document.getElementById('authDesignerPasswordConfirm').value;
+
+  // バリデーション
+  if (!email) {
+    showToast('メールアドレスを入力してください', 'error');
+    return;
+  }
+
+  if (!password) {
+    showToast('パスワードを入力してください', 'error');
+    return;
+  }
+
+  if (password.length < 8) {
+    showToast('パスワードは8文字以上で設定してください', 'error');
+    return;
+  }
+
+  if (password !== passwordConfirm) {
+    showToast('パスワードが一致しません', 'error');
+    return;
+  }
+
+  showStatus('保存中...', 'saving');
+
+  try {
+    const designer = designers.find(d => d.id === designerId);
+    const oldEmail = designer.email;
+
+    console.log('🔐 ユーザーアカウント作成開始:', { email, designerId });
+
+    // 1. Supabase Authにユーザーを作成
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          name: designer.name,
+          designer_id: designerId
+        },
+        emailRedirectTo: window.location.origin
+      }
+    });
+
+    console.log('🔐 signUp結果:', { authData, authError });
+
+    if (authError) {
+      // ユーザーが既に存在する場合は、パスワードだけを更新できないので警告
+      if (authError.message.includes('already registered')) {
+        showToast('⚠️ このメールアドレスは既に登録されています。パスワードの変更が必要な場合は、ログイン画面の「パスワードを忘れた」から変更してください。', 'error');
+      } else {
+        throw authError;
+      }
+    } else {
+      console.log('✅ Supabase Authにユーザー作成完了:', authData.user?.id);
+    }
+
+    // 2. designersテーブルのemailを更新
+    const { error: updateError } = await supabase
+      .from('designers')
+      .update({ email: email })
+      .eq('id', designerId);
+
+    if (updateError) {
+      console.error('❌ designers更新エラー:', updateError);
+      showStatus('エラー', 'error');
+      showToast('メールアドレスの保存に失敗しました: ' + updateError.message, 'error');
+      return;
+    }
+
+    console.log('✅ designersテーブル更新完了');
+
+    // 3. デザイナー配列を更新
+    const designerIndex = designers.findIndex(d => d.id === designerId);
+    if (designerIndex !== -1) {
+      designers[designerIndex].email = email;
+    }
+
+    closeDesignerAuthModal();
+    renderDesignerListInline();
+    showStatus('保存済み', 'saved');
+
+    if (authError && authError.message.includes('already registered')) {
+      showToast('メールアドレスを保存しました（アカウントは既に存在します）', 'success');
+    } else {
+      showToast('✅ ログインアカウントを作成しました！このメールアドレスとパスワードでログインできます。', 'success', 5000);
+    }
+
+  } catch (error) {
+    console.error('❌ 認証設定エラー:', error);
+    showStatus('エラー', 'error');
+    showToast('認証設定に失敗しました: ' + error.message, 'error');
+  }
 }
 
 // ドラッグ&ドロップ処理
