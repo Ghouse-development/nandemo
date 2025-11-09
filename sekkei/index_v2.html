@@ -1843,6 +1843,9 @@ let vendorsV2 = [];
 let taskVendorMappings = [];
 let products = [];
 
+// 無限ループ防止フラグ
+let isHandlingHashChange = false;
+
 // 担当者のカテゴリに応じたタスクリストを取得（新システム）
 function getTasksForAssignee(assigneeName) {
   const designer = designers.find(d => d.name === assigneeName);
@@ -1961,8 +1964,10 @@ async function checkAuth() {
 
     await init();
 
-    // 初期化完了後にURL直接アクセスの処理を実行
-    handleHashChange();
+    // 初期化完了後にURL直接アクセスの処理を実行（1回だけ）
+    if (!window.location.hash || window.location.hash === '#') {
+      window.location.hash = 'projects';
+    }
   } else {
     console.log('❌ セッションなし - ログイン画面を表示');
     document.getElementById('loginContainer').style.display = 'flex';
@@ -2040,8 +2045,10 @@ async function selectAccountType(category) {
 
   await init();
 
-  // 初期化完了後にURL直接アクセスの処理を実行
-  handleHashChange();
+  // 初期化完了後にデフォルトタブを設定（1回だけ）
+  if (!window.location.hash || window.location.hash === '#') {
+    window.location.hash = 'projects';
+  }
 
   console.log('✅ アカウントタイプ選択完了');
 }
@@ -3240,28 +3247,32 @@ function selectDesigner(name) {
 
 // メインタブ切り替え
 function switchMainTab(tabName, element) {
+  console.log('📑 switchMainTab:', tabName);
   document.querySelectorAll('.tab-nav-btn').forEach(btn => btn.classList.remove('active'));
   if (element) element.classList.add('active');
 
   document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
   document.getElementById(tabName + 'Tab').classList.add('active');
 
-  // URLを更新（既存のハッシュと異なる場合のみ）
-  if (window.location.hash !== '#' + tabName) {
+  // URLを更新（handleHashChange処理中でない場合のみ）
+  if (!isHandlingHashChange && window.location.hash !== '#' + tabName) {
+    console.log('🔗 switchMainTab: URLを更新:', tabName);
     window.location.hash = tabName;
   }
 }
 
 // サブタブ切り替え
 function switchSubTab(panelName, element) {
+  console.log('📑 switchSubTab:', panelName);
   document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
   if (element) element.classList.add('active');
 
   document.querySelectorAll('.sub-tab-panel').forEach(panel => panel.classList.remove('active'));
   document.getElementById(panelName + 'Panel').classList.add('active');
 
-  // URLを更新（設定タブ内のサブタブ）
-  if (window.location.hash !== `#settings/${panelName}`) {
+  // URLを更新（handleHashChange処理中でない場合のみ）
+  if (!isHandlingHashChange && window.location.hash !== `#settings/${panelName}`) {
+    console.log('🔗 switchSubTab: URLを更新:', panelName);
     window.location.hash = `settings/${panelName}`;
   }
 
@@ -5632,8 +5643,18 @@ function updateURLWithDesigner(designerName) {
 }
 
 function handleHashChange() {
+  // 無限ループ防止
+  if (isHandlingHashChange) {
+    console.log('⏸️ handleHashChange: すでに処理中のためスキップ');
+    return;
+  }
+
   const hash = window.location.hash.substring(1); // #を除去
+  console.log('🔗 handleHashChange:', hash);
+
   if (!hash) return;
+
+  isHandlingHashChange = true;
 
   // URLパラメータを分離（例: projects?designer=箕浦）
   const [pathPart, queryPart] = hash.split('?');
@@ -5678,8 +5699,22 @@ function handleHashChange() {
           const subBtn = document.querySelectorAll('.sub-tab-btn')[index];
           if (subBtn) switchSubTab(subTab, subBtn);
         }
+        // フラグをリセット（遅延後）
+        setTimeout(() => {
+          isHandlingHashChange = false;
+          console.log('✅ handleHashChange完了');
+        }, 150);
       }, 100);
+    } else {
+      // サブタブがない場合はすぐにフラグをリセット
+      setTimeout(() => {
+        isHandlingHashChange = false;
+        console.log('✅ handleHashChange完了');
+      }, 150);
     }
+  } else {
+    // 不明なタブの場合はすぐにフラグをリセット
+    isHandlingHashChange = false;
   }
 }
 
