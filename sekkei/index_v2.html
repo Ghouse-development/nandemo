@@ -2338,9 +2338,54 @@ async function loadProjects() {
     projects.forEach(p => {
       console.log(`  - ${p.customer}: assigned_to="${p.assigned_to}", ic_assignee="${p.ic_assignee}"`);
     });
+
+    // 既存データのクリーンアップ: assigned_toとic_assigneeの前後の空白を削除
+    await cleanupProjectAssignees();
   } catch (err) {
     console.error('❌ loadProjects()で予期しないエラー:', err);
     projects = [];
+  }
+}
+
+async function cleanupProjectAssignees() {
+  console.log('🧹 案件の担当者データをクリーンアップ中...');
+  let updatedCount = 0;
+
+  for (const project of projects) {
+    const assigned = (project.assigned_to || '').trim();
+    const icAssigned = (project.ic_assignee || '').trim();
+    let needsUpdate = false;
+
+    // trim()した結果が元の値と違う場合のみ更新
+    if (project.assigned_to !== assigned || project.ic_assignee !== icAssigned) {
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      console.log(`🔧 クリーンアップ: ${project.customer} (assigned_to: "${project.assigned_to}" → "${assigned}", ic_assignee: "${project.ic_assignee}" → "${icAssigned}")`);
+
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          assigned_to: assigned || null,
+          ic_assignee: icAssigned || null
+        })
+        .eq('id', project.id);
+
+      if (!error) {
+        project.assigned_to = assigned || null;
+        project.ic_assignee = icAssigned || null;
+        updatedCount++;
+      } else {
+        console.error('❌ クリーンアップ失敗:', project.customer, error);
+      }
+    }
+  }
+
+  if (updatedCount > 0) {
+    console.log(`✅ ${updatedCount}件の案件をクリーンアップしました`);
+  } else {
+    console.log('✅ クリーンアップ不要（全案件正常）');
   }
 }
 
@@ -3901,7 +3946,11 @@ function renderDesignerTabs() {
   if (sekkeiDesigners.length > 0) {
     html += '<div class="designer-group-label">設計担当</div>';
     sekkeiDesigners.forEach(designer => {
-      const designerProjects = projects.filter(p => p.assigned_to === designer.name && p.status !== 'completed');
+      const designerProjects = projects.filter(p => {
+        const assigned = (p.assigned_to || '').trim();
+        const designerName = designer.name.trim();
+        return assigned === designerName && p.status !== 'completed' && !p.is_archived;
+      });
       const count = designerProjects.length;
 
       console.log(`🔍 ${designer.name}の案件カウント:`, {
@@ -3911,14 +3960,17 @@ function renderDesignerTabs() {
         matchingProjects: designerProjects.map(p => ({
           customer: p.customer,
           assigned_to: `"${p.assigned_to}"`,
+          assigned_to_trimmed: `"${(p.assigned_to || '').trim()}"`,
           assigned_to_length: p.assigned_to?.length,
-          match: p.assigned_to === designer.name
+          match: (p.assigned_to || '').trim() === designer.name.trim()
         })),
         allProjects: projects.map(p => ({
           customer: p.customer,
           assigned_to: `"${p.assigned_to}"`,
+          assigned_to_trimmed: `"${(p.assigned_to || '').trim()}"`,
           status: p.status,
-          match: p.assigned_to === designer.name && p.status !== 'completed'
+          is_archived: p.is_archived,
+          match: (p.assigned_to || '').trim() === designer.name.trim() && p.status !== 'completed' && !p.is_archived
         }))
       });
 
@@ -3934,7 +3986,12 @@ function renderDesignerTabs() {
   if (icDesigners.length > 0) {
     html += '<div class="designer-group-label">IC担当</div>';
     icDesigners.forEach(designer => {
-      const count = projects.filter(p => p.assigned_to === designer.name && p.status !== 'completed').length;
+      const count = projects.filter(p => {
+        const assigned = (p.assigned_to || '').trim();
+        const icAssigned = (p.ic_assignee || '').trim();
+        const designerName = designer.name.trim();
+        return (assigned === designerName || icAssigned === designerName) && p.status !== 'completed' && !p.is_archived;
+      }).length;
       html += `<button class="designer-tab ${currentDesignerTab === designer.name ? 'active' : ''}" onclick="setDesignerTab('${designer.name}')">${designer.name} (${count})</button>`;
     });
   }
@@ -3963,11 +4020,15 @@ function renderProjects() {
 
   let filtered = projects.filter(p => {
     // 担当者フィルター（設計またはIC担当者）
-    if (currentDesignerTab !== 'ALL' &&
-        p.assigned_to !== currentDesignerTab &&
-        p.ic_assignee !== currentDesignerTab) {
-      console.log(`❌ フィルタで除外: ${p.customer} (assigned_to: "${p.assigned_to}", ic_assignee: "${p.ic_assignee}", currentTab: "${currentDesignerTab}")`);
-      return false;
+    if (currentDesignerTab !== 'ALL') {
+      const assigned = (p.assigned_to || '').trim();
+      const icAssigned = (p.ic_assignee || '').trim();
+      const currentTab = currentDesignerTab.trim();
+
+      if (assigned !== currentTab && icAssigned !== currentTab) {
+        console.log(`❌ フィルタで除外: ${p.customer} (assigned_to: "${p.assigned_to}" (trim: "${assigned}"), ic_assignee: "${p.ic_assignee}" (trim: "${icAssigned}"), currentTab: "${currentTab}")`);
+        return false;
+      }
     }
 
     // アーカイブフィルター
@@ -4255,8 +4316,8 @@ function closeProjectModal() {
 
 async function saveProject() {
   const customer = document.getElementById('projectCustomer').value.trim();
-  const assignedTo = document.getElementById('projectAssignedTo').value;
-  const icAssignee = document.getElementById('projectIcAssignee').value; // IC担当者（オプショナル）
+  const assignedTo = document.getElementById('projectAssignedTo').value.trim(); // trim()追加
+  const icAssignee = document.getElementById('projectIcAssignee').value.trim(); // trim()追加
   const specifications = document.getElementById('projectSpecifications').value;
   const memo = document.getElementById('projectMemo').value.trim();
 
@@ -4270,11 +4331,11 @@ async function saveProject() {
   showStatus('保存中...', 'saving');
 
   // 担当設計士（設計）のIDを取得
-  const designer = designers.find(d => d.name === assignedTo);
+  const designer = designers.find(d => d.name.trim() === assignedTo);
   const designerId = designer ? designer.id : null;
 
   // IC担当者のIDを取得（空文字列の場合はnull）
-  const icDesigner = icAssignee ? designers.find(d => d.name === icAssignee) : null;
+  const icDesigner = icAssignee ? designers.find(d => d.name.trim() === icAssignee) : null;
   const icDesignerId = icDesigner ? icDesigner.id : null;
 
   const blankProgress = {};
