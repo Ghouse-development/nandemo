@@ -1989,6 +1989,10 @@ async function selectAccountType(category) {
   updateCategorySwitchButton();
 
   await init();
+
+  // 初期化完了後にURL直接アクセスの処理を実行
+  handleHashChange();
+
   console.log('✅ アカウントタイプ選択完了');
 }
 
@@ -2105,6 +2109,13 @@ async function init() {
     populateProductDropdown();
 
     // 新システムの各管理画面の初期描画
+    console.log('🎨 新システム描画開始:', {
+      vendorsV2Length: vendorsV2.length,
+      vendorCategoriesLength: vendorCategories.length,
+      tasksV2Length: tasksV2.length,
+      taskVendorMappingsLength: taskVendorMappings.length
+    });
+
     renderDesignerListInline();  // スタッフ管理
     renderCategoryFilters();      // カテゴリフィルター
     renderVendorsV2();            // 業者管理
@@ -2322,6 +2333,12 @@ async function loadVendorsV2() {
 }
 
 function mergeVendorCategories() {
+  console.log('🔗 mergeVendorCategories() 開始:', {
+    vendorsV2Length: vendorsV2.length,
+    vendorCategoriesLength: vendorCategories.length,
+    vendorCategories: vendorCategories
+  });
+
   // カテゴリ情報を業者データにマージ（Promise.allSettled完了後に呼び出す）
   if (vendorsV2.length > 0 && vendorCategories.length > 0) {
     vendorsV2 = vendorsV2.map(vendor => {
@@ -2331,7 +2348,12 @@ function mergeVendorCategories() {
         vendor_categories: category ? { name: category.name } : null
       };
     });
-    console.log('✅ 業者-カテゴリマージ完了');
+    console.log('✅ 業者-カテゴリマージ完了:', vendorsV2.slice(0, 2));
+  } else {
+    console.warn('⚠️ マージスキップ:', {
+      vendorsV2Empty: vendorsV2.length === 0,
+      vendorCategoriesEmpty: vendorCategories.length === 0
+    });
   }
 }
 
@@ -2370,9 +2392,19 @@ async function loadProducts() {
 let currentCategoryFilter = 'ALL';
 
 function renderVendorsV2() {
+  console.log('📞 renderVendorsV2() 呼び出し開始');
+  console.log('📊 vendorsV2配列の状態:', {
+    length: vendorsV2.length,
+    data: vendorsV2.slice(0, 3),
+    全データ: vendorsV2
+  });
+
   const container = document.getElementById('vendorsGrid');
+  console.log('🎯 vendorsGrid要素:', container ? 'found ✓' : 'NOT FOUND ✗');
+
   if (!container) {
-    console.warn('⚠️ vendorsGrid要素が見つかりません');
+    console.error('❌ CRITICAL: vendorsGrid要素が見つかりません！');
+    console.log('📍 現在のDOM状態:', document.getElementById('vendorsPanel'));
     return;
   }
 
