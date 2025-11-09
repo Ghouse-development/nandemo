@@ -3900,7 +3900,27 @@ function renderDesignerTabs() {
   if (sekkeiDesigners.length > 0) {
     html += '<div class="designer-group-label">設計担当</div>';
     sekkeiDesigners.forEach(designer => {
-      const count = projects.filter(p => p.assigned_to === designer.name && p.status !== 'completed').length;
+      const designerProjects = projects.filter(p => p.assigned_to === designer.name && p.status !== 'completed');
+      const count = designerProjects.length;
+
+      console.log(`🔍 ${designer.name}の案件カウント:`, {
+        designerName: `"${designer.name}"`,
+        designerNameLength: designer.name.length,
+        count: count,
+        matchingProjects: designerProjects.map(p => ({
+          customer: p.customer,
+          assigned_to: `"${p.assigned_to}"`,
+          assigned_to_length: p.assigned_to?.length,
+          match: p.assigned_to === designer.name
+        })),
+        allProjects: projects.map(p => ({
+          customer: p.customer,
+          assigned_to: `"${p.assigned_to}"`,
+          status: p.status,
+          match: p.assigned_to === designer.name && p.status !== 'completed'
+        }))
+      });
+
       html += `<button class="designer-tab ${currentDesignerTab === designer.name ? 'active' : ''}" onclick="setDesignerTab('${designer.name}')">${designer.name} (${count})</button>`;
     });
   } else {
