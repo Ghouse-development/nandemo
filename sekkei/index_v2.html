@@ -1319,7 +1319,7 @@ body {
           <div class="toolbar-left">
             <input type="text" class="input" id="searchQuery" placeholder="検索..." oninput="renderProjects()">
             <select class="select" id="specFilter" onchange="renderProjects()">
-              <option value="">すべての仕様</option>
+              <option value="">すべての商品</option>
               <option>LIFE</option>
               <option>LIFE+</option>
               <option>HOURS</option>
@@ -1353,6 +1353,7 @@ body {
           <button class="sub-tab-btn" onclick="switchSubTab('vendors', this)">🏢 業者・メール管理</button>
           <button class="sub-tab-btn" onclick="switchSubTab('categories', this)">🏷️ カテゴリ管理</button>
           <button class="sub-tab-btn" onclick="switchSubTab('tasks', this)">✅ タスク管理</button>
+          <button class="sub-tab-btn" onclick="switchSubTab('products', this)">📦 商品管理</button>
         </nav>
 
         <!-- スタッフ管理 -->
@@ -1419,6 +1420,22 @@ body {
           </div>
           <div id="tasksGrid"></div>
         </div>
+
+        <!-- 商品管理 -->
+        <div id="productsPanel" class="sub-tab-panel">
+          <div style="max-width: 800px; margin: 0 auto;">
+            <h2 style="margin-bottom: 20px; font-size: 24px; font-weight: 700;">商品マスタ管理</h2>
+            <p style="margin-bottom: 32px; color: var(--text-secondary);">案件で選択できる商品を管理します。</p>
+            <div class="form-group">
+              <label class="form-label">新しい商品を追加</label>
+              <div style="display: flex; gap: 12px;">
+                <input type="text" class="form-input" id="newProductNameInline" placeholder="商品名（例：LIFE、LIFE+、HOURS）" style="flex: 1;">
+                <button class="btn btn-primary" onclick="addProductInline()">追加</button>
+              </div>
+            </div>
+            <div id="productsGrid" style="margin-top: 32px;"></div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -1441,15 +1458,8 @@ body {
         <select class="form-select" id="projectAssignedTo"></select>
       </div>
       <div class="form-group">
-        <label class="form-label">仕様</label>
-        <select class="form-select" id="projectSpecifications">
-          <option>LIFE</option>
-          <option>LIFE+</option>
-          <option>HOURS</option>
-          <option>LACIE</option>
-          <option>LIFEリミ</option>
-          <option>LIFE+リミ</option>
-        </select>
+        <label class="form-label">商品</label>
+        <select class="form-select" id="projectSpecifications"></select>
       </div>
       <div class="form-group">
         <label class="form-label">メモ</label>
@@ -1762,6 +1772,7 @@ let vendorCategories = [];
 let tasksV2 = [];
 let vendorsV2 = [];
 let taskVendorMappings = [];
+let products = [];
 
 // 担当者のカテゴリに応じたタスクリストを取得（新システム）
 function getTasksForAssignee(assigneeName) {
@@ -2036,7 +2047,8 @@ async function init() {
       loadVendorCategories(),
       loadTasksV2(),
       loadVendorsV2(),
-      loadTaskVendorMappings()
+      loadTaskVendorMappings(),
+      loadProducts()
     ]);
 
     // 各結果を確認
@@ -2065,6 +2077,7 @@ async function init() {
 
     // 新システムのUI初期化
     populateVendorCategoryDropdown();
+    populateProductDropdown();
 
     console.log('✅ 初期化完了');
     showStatus('保存済み', 'saved');
@@ -2272,6 +2285,27 @@ async function loadTaskVendorMappings() {
     .select('*');
   if (!error) taskVendorMappings = data || [];
   console.log('✅ タスク-業者紐づけ読み込み完了:', taskVendorMappings.length, '件');
+}
+
+async function loadProducts() {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .order('display_order');
+  if (!error && data) {
+    products = data;
+  } else {
+    // テーブルが存在しない場合のフォールバック
+    products = [
+      { id: '1', name: 'LIFE', display_order: 1 },
+      { id: '2', name: 'LIFE+', display_order: 2 },
+      { id: '3', name: 'HOURS', display_order: 3 },
+      { id: '4', name: 'LACIE', display_order: 4 },
+      { id: '5', name: 'LIFEリミ', display_order: 5 },
+      { id: '6', name: 'LIFE+リミ', display_order: 6 }
+    ];
+  }
+  console.log('✅ 商品読み込み完了:', products.length, '件');
 }
 
 // ============================================
@@ -2629,6 +2663,108 @@ function renderCategoryFilters() {
 }
 
 // ============================================
+// 商品管理
+// ============================================
+function renderProductsList() {
+  const container = document.getElementById('productsGrid');
+  if (!container) return;
+
+  if (products.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><p>商品が登録されていません</p></div>';
+    return;
+  }
+
+  container.innerHTML = '<div class="table-container"><table class="table"><thead><tr><th>商品名</th><th>表示順</th><th>操作</th></tr></thead><tbody>' +
+    products.map(product => `
+      <tr>
+        <td><strong>${product.name}</strong></td>
+        <td>${product.display_order}</td>
+        <td><button class="btn btn-danger btn-small" onclick="deleteProductInline('${product.id}')">削除</button></td>
+      </tr>
+    `).join('') +
+    '</tbody></table></div>';
+}
+
+async function addProductInline() {
+  const name = document.getElementById('newProductNameInline').value.trim();
+
+  if (!name) {
+    showToast('商品名を入力してください', 'error');
+    return;
+  }
+
+  if (products.find(p => p.name === name)) {
+    showToast('既に存在する商品名です', 'error');
+    return;
+  }
+
+  showStatus('追加中...', 'saving');
+
+  const maxDisplayOrder = products.length > 0 ? Math.max(...products.map(p => p.display_order || 0)) : 0;
+  const newDisplayOrder = maxDisplayOrder + 1;
+
+  const { data, error } = await supabase
+    .from('products')
+    .insert([{ name, display_order: newDisplayOrder }])
+    .select();
+
+  if (error) {
+    // テーブルが存在しない場合、ローカルに追加
+    products.push({ id: Date.now().toString(), name, display_order: newDisplayOrder });
+    document.getElementById('newProductNameInline').value = '';
+    renderProductsList();
+    populateProductDropdown();
+    showStatus('保存済み', 'saved');
+    showToast('商品を追加しました（ローカルのみ）', 'success');
+    return;
+  }
+
+  products.push(data[0]);
+  document.getElementById('newProductNameInline').value = '';
+  renderProductsList();
+  populateProductDropdown();
+  showStatus('保存済み', 'saved');
+  showToast('商品を追加しました', 'success');
+}
+
+async function deleteProductInline(productId) {
+  const product = products.find(p => p.id === productId);
+  if (!product) return;
+
+  if (!confirm(`商品「${product.name}」を削除しますか？`)) return;
+
+  showStatus('削除中...', 'saving');
+
+  const { error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', productId);
+
+  if (error && !error.message.includes('does not exist')) {
+    showStatus('エラー', 'error');
+    showToast('削除に失敗しました: ' + error.message, 'error');
+    return;
+  }
+
+  products = products.filter(p => p.id !== productId);
+  renderProductsList();
+  populateProductDropdown();
+  showStatus('保存済み', 'saved');
+  showToast('商品を削除しました', 'success');
+}
+
+function populateProductDropdown() {
+  const select = document.getElementById('projectSpecifications');
+  if (!select) return;
+
+  const currentValue = select.value;
+  select.innerHTML = '<option value="">選択してください</option>' +
+    products.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+
+  if (currentValue) select.value = currentValue;
+}
+
+// ============================================
 // タスク管理
 // ============================================
 function renderTasksManagement() {
@@ -2925,6 +3061,9 @@ function switchSubTab(panelName, element) {
       break;
     case 'tasks':
       renderTasksManagement();
+      break;
+    case 'products':
+      renderProductsList();
       break;
   }
 }
@@ -4963,7 +5102,7 @@ function exportCSV() {
   }
 
   // CSVヘッダー
-  const headers = ['顧客名', '担当者', '仕様', '進捗率', 'メモ', '作成日', '更新日'];
+  const headers = ['顧客名', '担当者', '商品', '進捗率', 'メモ', '作成日', '更新日'];
 
   // CSVボディ
   const rows = projects.map(p => {
