@@ -2280,9 +2280,9 @@ async function loadDesigners() {
     }, {});
 
     console.log('✅ 設計士データ読み込み完了:', {
-      総数: designers.length,
-      カテゴリ別: byCategory,
-      サンプル: designers.slice(0, 3).map(d => ({ name: d.name, category: d.category, email: d.email }))
+      '総数': designers.length,
+      'カテゴリ別': byCategory,
+      'サンプル': designers.slice(0, 3).map(d => ({ name: d.name, category: d.category, email: d.email }))
     });
 
     if (designers.length === 0) {
@@ -2585,7 +2585,7 @@ function renderVendorsV2() {
   console.log('📊 vendorsV2配列の状態:', {
     length: vendorsV2.length,
     data: vendorsV2.slice(0, 3),
-    全データ: vendorsV2
+    '全データ': vendorsV2
   });
 
   const container = document.getElementById('vendorsGrid');
