@@ -5257,7 +5257,7 @@ function copyText(elementId) {
 }
 
 // ============================================
-// タスクからのメール作成機能（Gmail直接開く）
+// タスクからのメール作成機能（モーダル確認後にGmail開く）
 // ============================================
 async function openEmailFromTask(projectId, taskKey) {
   const project = projects.find(p => p.id === projectId);
@@ -5299,7 +5299,7 @@ async function openEmailFromTask(projectId, taskKey) {
   const dueDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   const dueDateStr = dueDate.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' }).replace('/', '月') + '日';
 
-  // 最初の業者のテンプレートを使用（全業者が同じカテゴリなので）
+  // 最初の業者のテンプレートを使用
   const vendor = taskVendors[0];
 
   // プレースホルダー置換
@@ -5313,15 +5313,95 @@ async function openEmailFromTask(projectId, taskKey) {
       .replace(/\{contact\}/g, vendor.contact || 'ご担当者様');
   };
 
-  // 件名と本文を生成
-  const subject = replacePlaceholders(vendor.subject_format || `${project.customer}様邸 ${taskDef.task_name}`);
-  const body = replacePlaceholders(vendor.template_text || '');
+  // 初期の件名と本文を生成
+  const initialSubject = replacePlaceholders(vendor.subject_format || `${project.customer}様邸 ${taskDef.task_name}`);
+  const initialBody = replacePlaceholders(vendor.template_text || '');
 
-  // 全業者のメールアドレスをTo:に設定
-  const emailAddresses = taskVendors.map(v => v.email).filter(e => e).join(',');
+  // モーダルを表示
+  showEmailModal(project, taskDef, taskVendors, initialSubject, initialBody);
+}
+
+function showEmailModal(project, taskDef, vendors, initialSubject, initialBody) {
+  const modal = document.getElementById('emailModal');
+  const content = document.getElementById('emailComposerContent');
+
+  // 業者選択チェックボックスのHTML
+  const vendorCheckboxes = vendors.map((v, idx) => `
+    <label style="display: flex; align-items: center; gap: 8px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); cursor: pointer;">
+      <input type="checkbox"
+        id="vendor_${v.id}"
+        value="${v.id}"
+        ${idx === 0 ? 'checked' : ''}
+        onchange="updateEmailPreview()"
+        style="width: 18px; height: 18px; cursor: pointer;">
+      <div style="flex: 1;">
+        <div style="font-weight: 600; margin-bottom: 2px;">${v.company}</div>
+        <div style="font-size: 13px; color: var(--text-secondary);">${v.contact || ''} - ${v.email || ''}</div>
+      </div>
+    </label>
+  `).join('');
+
+  content.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div>
+        <h3 style="margin: 0 0 8px 0; font-size: 18px;">📧 ${taskDef.task_name} - メール作成</h3>
+        <div style="font-size: 14px; color: var(--text-secondary);">案件: ${project.customer}</div>
+      </div>
+
+      <div>
+        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px;">宛先業者を選択</label>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${vendorCheckboxes}
+        </div>
+      </div>
+
+      <div>
+        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px;">件名</label>
+        <input type="text" id="emailSubject" class="form-input" value="${initialSubject}">
+      </div>
+
+      <div>
+        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px;">本文</label>
+        <textarea id="emailBody" class="form-textarea" rows="15" style="font-family: inherit; line-height: 1.8;">${initialBody}</textarea>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="closeEmailModal()">キャンセル</button>
+        <button class="btn btn-primary" onclick="openGmailFromModal()">📧 Gmailで開く</button>
+      </div>
+    </div>
+  `;
+
+  // グローバルに保存（openGmailFromModalで使用）
+  window.__emailModalData = { project, taskDef, vendors };
+
+  modal.classList.add('show');
+}
+
+function updateEmailPreview() {
+  // 必要に応じて件名・本文のプレビュー更新処理を追加
+}
+
+function openGmailFromModal() {
+  const subject = document.getElementById('emailSubject').value;
+  const body = document.getElementById('emailBody').value;
+
+  // 選択された業者のメールアドレスを取得
+  const { vendors } = window.__emailModalData;
+  const selectedVendorIds = vendors
+    .filter(v => document.getElementById(`vendor_${v.id}`)?.checked)
+    .map(v => v.id);
+
+  if (selectedVendorIds.length === 0) {
+    showToast('業者を選択してください', 'error');
+    return;
+  }
+
+  const selectedVendors = vendors.filter(v => selectedVendorIds.includes(v.id));
+  const emailAddresses = selectedVendors.map(v => v.email).filter(e => e).join(',');
 
   if (!emailAddresses) {
-    showToast('メールアドレスが設定されていません', 'error');
+    showToast('選択された業者にメールアドレスが設定されていません', 'error');
     return;
   }
 
@@ -5330,6 +5410,9 @@ async function openEmailFromTask(projectId, taskKey) {
 
   // Gmailを新しいタブで開く
   window.open(gmailUrl, '_blank');
+
+  // モーダルを閉じる
+  closeEmailModal();
 
   // トーストで通知
   showToast('Gmailを開きました', 'success');
