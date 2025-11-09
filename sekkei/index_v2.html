@@ -2730,7 +2730,7 @@ function renderCategoriesList() {
       <table class="table">
         <thead>
           <tr>
-            <th style="width: 60px;">順</th>
+            <th style="width: 60px;"></th>
             <th>カテゴリ名</th>
             <th style="width: 100px;">業者数</th>
             <th style="width: 180px;">操作</th>
@@ -2741,7 +2741,7 @@ function renderCategoriesList() {
             const count = vendorsV2.filter(v => v.category_id === cat.id).length;
             return `
               <tr draggable="true" ondragstart="handleCategoryDragStart(event, '${cat.id}')" ondragover="handleCategoryDragOver(event)" ondrop="handleCategoryDrop(event, '${cat.id}')" style="cursor: move;">
-                <td><span style="color: var(--text-muted);">⋮⋮</span> ${cat.display_order}</td>
+                <td><span style="color: var(--text-muted);">⋮⋮</span></td>
                 <td><strong>${cat.name}</strong></td>
                 <td>${count}社</td>
                 <td>
@@ -2966,10 +2966,10 @@ function renderProductsList() {
   // 表示順でソート
   const sortedProducts = [...products].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
 
-  container.innerHTML = '<div class="table-container"><table class="table"><thead><tr><th style="width: 60px;">順</th><th>商品名</th><th style="width: 100px;">操作</th></tr></thead><tbody>' +
+  container.innerHTML = '<div class="table-container"><table class="table"><thead><tr><th style="width: 60px;"></th><th>商品名</th><th style="width: 100px;">操作</th></tr></thead><tbody>' +
     sortedProducts.map(product => `
       <tr draggable="true" ondragstart="handleProductDragStart(event, '${product.id}')" ondragover="handleProductDragOver(event)" ondrop="handleProductDrop(event, '${product.id}')" style="cursor: move;">
-        <td><span style="color: var(--text-muted);">⋮⋮</span> ${product.display_order}</td>
+        <td><span style="color: var(--text-muted);">⋮⋮</span></td>
         <td><strong>${product.name}</strong></td>
         <td><button class="btn btn-danger btn-small" onclick="deleteProductInline('${product.id}')">削除</button></td>
       </tr>
@@ -3151,7 +3151,7 @@ function renderTasksManagement() {
         <table class="table">
           <thead>
             <tr>
-              <th style="width: 60px;">順</th>
+              <th style="width: 60px;"></th>
               <th>タスク名</th>
               <th style="width: 100px;">状態管理</th>
               <th style="width: 120px;">📧ボタン</th>
@@ -3171,7 +3171,7 @@ function renderTasksManagement() {
         <table class="table">
           <thead>
             <tr>
-              <th style="width: 60px;">順</th>
+              <th style="width: 60px;"></th>
               <th>タスク名</th>
               <th style="width: 100px;">状態管理</th>
               <th style="width: 120px;">📧ボタン</th>
@@ -3205,7 +3205,7 @@ function renderTaskRow(task) {
 
   return `
     <tr draggable="true" ondragstart="handleTaskDragStart(event, '${task.id}')" ondragover="handleTaskDragOver(event)" ondrop="handleTaskDrop(event, '${task.id}')" style="cursor: move;">
-      <td><span style="color: var(--text-muted);">⋮⋮</span> ${task.display_order}</td>
+      <td><span style="color: var(--text-muted);">⋮⋮</span></td>
       <td><strong>${task.task_name}</strong></td>
       <td>${stateInfo}</td>
       <td>${emailButtonInfo}</td>
