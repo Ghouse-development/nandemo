@@ -2372,12 +2372,21 @@ async function loadTasksV2() {
 }
 
 async function loadVendorsV2() {
-  console.log('🔄 業者データ読み込み開始...');
+  console.log('🔄 業者データ読み込み開始...', {
+    timestamp: new Date().toISOString()
+  });
 
   const { data, error } = await supabase
     .from('vendors_v2')
     .select('*')
     .order('company');
+
+  console.log('📡 loadVendorsV2 Supabaseレスポンス:', {
+    success: !error,
+    dataLength: data?.length || 0,
+    error: error,
+    rawDataSample: data?.slice(0, 2)
+  });
 
   if (error) {
     console.error('❌ 業者読み込みエラー:', error);
@@ -2386,7 +2395,10 @@ async function loadVendorsV2() {
   }
 
   vendorsV2 = data || [];
-  console.log('✅ 業者読み込み完了:', vendorsV2.length, '件', vendorsV2);
+  console.log('✅ 業者読み込み完了:', {
+    count: vendorsV2.length,
+    vendors: vendorsV2
+  });
 }
 
 function mergeVendorCategories() {
@@ -2415,11 +2427,27 @@ function mergeVendorCategories() {
 }
 
 async function loadTaskVendorMappings() {
+  console.log('🔄 タスク-業者紐づけデータ読み込み開始...', {
+    timestamp: new Date().toISOString()
+  });
+
   const { data, error } = await supabase
     .from('task_vendor_mappings_v2')
     .select('*');
+
+  console.log('📡 loadTaskVendorMappings Supabaseレスポンス:', {
+    success: !error,
+    dataLength: data?.length || 0,
+    error: error,
+    rawDataSample: data?.slice(0, 3)
+  });
+
   if (!error) taskVendorMappings = data || [];
-  console.log('✅ タスク-業者紐づけ読み込み完了:', taskVendorMappings.length, '件');
+
+  console.log('✅ タスク-業者紐づけ読み込み完了:', {
+    count: taskVendorMappings.length,
+    mappings: taskVendorMappings
+  });
 }
 
 async function loadProducts() {
@@ -3247,7 +3275,13 @@ function selectDesigner(name) {
 
 // メインタブ切り替え
 function switchMainTab(tabName, element) {
-  console.log('📑 switchMainTab:', tabName);
+  console.log('📑 switchMainTab 開始:', {
+    tabName: tabName,
+    isHandlingHashChange: isHandlingHashChange,
+    currentHash: window.location.hash,
+    timestamp: new Date().toISOString()
+  });
+
   document.querySelectorAll('.tab-nav-btn').forEach(btn => btn.classList.remove('active'));
   if (element) element.classList.add('active');
 
@@ -3258,12 +3292,20 @@ function switchMainTab(tabName, element) {
   if (!isHandlingHashChange && window.location.hash !== '#' + tabName) {
     console.log('🔗 switchMainTab: URLを更新:', tabName);
     window.location.hash = tabName;
+  } else {
+    console.log('⏸️ switchMainTab: URL更新をスキップ (isHandlingHashChange=' + isHandlingHashChange + ')');
   }
 }
 
 // サブタブ切り替え
 function switchSubTab(panelName, element) {
-  console.log('📑 switchSubTab:', panelName);
+  console.log('📑 switchSubTab 開始:', {
+    panelName: panelName,
+    isHandlingHashChange: isHandlingHashChange,
+    currentHash: window.location.hash,
+    timestamp: new Date().toISOString()
+  });
+
   document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
   if (element) element.classList.add('active');
 
@@ -3274,6 +3316,8 @@ function switchSubTab(panelName, element) {
   if (!isHandlingHashChange && window.location.hash !== `#settings/${panelName}`) {
     console.log('🔗 switchSubTab: URLを更新:', panelName);
     window.location.hash = `settings/${panelName}`;
+  } else {
+    console.log('⏸️ switchSubTab: URL更新をスキップ (isHandlingHashChange=' + isHandlingHashChange + ')');
   }
 
   // サブタブ切り替え時に対応する描画関数を実行
@@ -3634,6 +3678,18 @@ function renderProjectCard(project) {
     const hasVendor = taskVendorMappings.some(m => m.task_id === taskDef.id);
     const emailBtn = hasVendor ?
       `<button class="task-email-btn" onclick="openEmailFromTask('${project.id}', '${key}')" title="メール作成">📧</button>` : '';
+
+    // デバッグ: メールボタンが表示される条件を確認
+    if (taskDef.task_key === 'ventilation' || taskDef.task_key === 'plumbing') {
+      console.log('📧 メールボタン判定:', {
+        taskKey: taskDef.task_key,
+        taskName: taskDef.task_name,
+        taskId: taskDef.id,
+        hasVendor: hasVendor,
+        taskVendorMappingsCount: taskVendorMappings.length,
+        matchingMappings: taskVendorMappings.filter(m => m.task_id === taskDef.id)
+      });
+    }
 
     // 状態セレクトの生成（タスクに状態管理が有効な場合のみ）
     let stateSelect = '';
@@ -5650,7 +5706,12 @@ function handleHashChange() {
   }
 
   const hash = window.location.hash.substring(1); // #を除去
-  console.log('🔗 handleHashChange:', hash);
+  console.log('🔗 handleHashChange 開始:', {
+    hash: hash,
+    timestamp: new Date().toISOString(),
+    vendorsV2Length: vendorsV2.length,
+    taskVendorMappingsLength: taskVendorMappings.length
+  });
 
   if (!hash) return;
 
