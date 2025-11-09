@@ -2468,17 +2468,25 @@ async function cleanupProjectAssignees() {
   let updatedCount = 0;
 
   for (const project of projects) {
-    const assigned = (project.assigned_to || '').trim();
-    const icAssigned = (project.ic_assignee || '').trim();
+    // "null"という文字列もnullとして扱う
+    let assigned = (project.assigned_to || '').trim();
+    let icAssigned = (project.ic_assignee || '').trim();
+
+    if (assigned === 'null' || assigned === 'undefined') assigned = '';
+    if (icAssigned === 'null' || icAssigned === 'undefined') icAssigned = '';
+
     let needsUpdate = false;
 
-    // trim()した結果が元の値と違う場合のみ更新
-    if (project.assigned_to !== assigned || project.ic_assignee !== icAssigned) {
+    // trim()した結果が元の値と違う場合、または"null"文字列の場合は更新
+    if (project.assigned_to !== assigned ||
+        project.ic_assignee !== icAssigned ||
+        project.assigned_to === 'null' ||
+        project.ic_assignee === 'null') {
       needsUpdate = true;
     }
 
     if (needsUpdate) {
-      console.log(`🔧 クリーンアップ: ${project.customer} (assigned_to: "${project.assigned_to}" → "${assigned}", ic_assignee: "${project.ic_assignee}" → "${icAssigned}")`);
+      console.log(`🔧 クリーンアップ: ${project.customer} (assigned_to: "${project.assigned_to}" → "${assigned || 'null'}", ic_assignee: "${project.ic_assignee}" → "${icAssigned || 'null'}")`);
 
       const { error } = await supabase
         .from('projects')
