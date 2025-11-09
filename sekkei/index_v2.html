@@ -2916,11 +2916,14 @@ function renderProductsList() {
     return;
   }
 
-  container.innerHTML = '<div class="table-container"><table class="table"><thead><tr><th>商品名</th><th>表示順</th><th>操作</th></tr></thead><tbody>' +
-    products.map(product => `
-      <tr>
+  // 表示順でソート
+  const sortedProducts = [...products].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+  container.innerHTML = '<div class="table-container"><table class="table"><thead><tr><th style="width: 60px;">順</th><th>商品名</th><th style="width: 100px;">操作</th></tr></thead><tbody>' +
+    sortedProducts.map(product => `
+      <tr draggable="true" ondragstart="handleProductDragStart(event, '${product.id}')" ondragover="handleProductDragOver(event)" ondrop="handleProductDrop(event, '${product.id}')" style="cursor: move;">
+        <td><span style="color: var(--text-muted);">⋮⋮</span> ${product.display_order}</td>
         <td><strong>${product.name}</strong></td>
-        <td>${product.display_order}</td>
         <td><button class="btn btn-danger btn-small" onclick="deleteProductInline('${product.id}')">削除</button></td>
       </tr>
     `).join('') +
@@ -2993,6 +2996,84 @@ async function deleteProductInline(productId) {
   populateProductDropdown();
   showStatus('保存済み', 'saved');
   showToast('商品を削除しました', 'success');
+}
+
+// ドラッグ&ドロップで商品の表示順を変更
+let draggedProductId = null;
+
+function handleProductDragStart(event, productId) {
+  draggedProductId = productId;
+  event.dataTransfer.effectAllowed = 'move';
+  event.target.style.opacity = '0.5';
+}
+
+function handleProductDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  return false;
+}
+
+async function handleProductDrop(event, targetProductId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!draggedProductId || draggedProductId === targetProductId) {
+    resetProductDragState();
+    return;
+  }
+
+  const draggedProduct = products.find(p => p.id === draggedProductId);
+  const targetProduct = products.find(p => p.id === targetProductId);
+
+  if (!draggedProduct || !targetProduct) {
+    resetProductDragState();
+    return;
+  }
+
+  // 表示順を入れ替え
+  const draggedOrder = draggedProduct.display_order;
+  const targetOrder = targetProduct.display_order;
+
+  showStatus('並び替え中...', 'saving');
+
+  // 両方の商品の表示順を更新
+  const updates = [
+    supabase.from('products').update({ display_order: targetOrder }).eq('id', draggedProductId),
+    supabase.from('products').update({ display_order: draggedOrder }).eq('id', targetProductId)
+  ];
+
+  const results = await Promise.all(updates);
+
+  if (results.some(r => r.error)) {
+    // エラーがあってもローカルで更新
+    draggedProduct.display_order = targetOrder;
+    targetProduct.display_order = draggedOrder;
+    renderProductsList();
+    populateProductDropdown();
+    showStatus('並び替え完了', 'success');
+    showToast('表示順を変更しました（ローカルのみ）', 'success');
+    resetProductDragState();
+    return;
+  }
+
+  // ローカルデータも更新
+  draggedProduct.display_order = targetOrder;
+  targetProduct.display_order = draggedOrder;
+
+  // 再描画
+  renderProductsList();
+  populateProductDropdown();
+  showStatus('並び替え完了', 'success');
+  showToast('表示順を変更しました', 'success');
+  resetProductDragState();
+}
+
+function resetProductDragState() {
+  draggedProductId = null;
+  // すべての行の透明度をリセット
+  document.querySelectorAll('#productsGrid tr[draggable]').forEach(tr => {
+    tr.style.opacity = '1';
+  });
 }
 
 function populateProductDropdown() {
