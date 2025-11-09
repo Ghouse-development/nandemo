@@ -2333,6 +2333,10 @@ async function loadProjects() {
     }
     projects = data || [];
     console.log('✅ 案件データ読み込み完了:', projects.length, '件');
+    console.log('📋 読み込んだ案件の詳細:');
+    projects.forEach(p => {
+      console.log(`  - ${p.customer}: assigned_to="${p.assigned_to}", ic_assignee="${p.ic_assignee}"`);
+    });
   } catch (err) {
     console.error('❌ loadProjects()で予期しないエラー:', err);
     projects = [];
@@ -3931,11 +3935,19 @@ function renderProjects() {
   const container = document.getElementById('projectsGrid');
   const emptyState = document.getElementById('emptyProjects');
 
+  console.log('🎨 renderProjects() 開始');
+  console.log('📊 現在のタブ:', currentDesignerTab);
+  console.log('📊 全案件数:', projects.length);
+  console.log('📊 全案件:', projects.map(p => ({ customer: p.customer, assigned_to: p.assigned_to, ic_assignee: p.ic_assignee })));
+
   let filtered = projects.filter(p => {
     // 担当者フィルター（設計またはIC担当者）
     if (currentDesignerTab !== 'ALL' &&
         p.assigned_to !== currentDesignerTab &&
-        p.ic_assignee !== currentDesignerTab) return false;
+        p.ic_assignee !== currentDesignerTab) {
+      console.log(`❌ フィルタで除外: ${p.customer} (assigned_to: "${p.assigned_to}", ic_assignee: "${p.ic_assignee}", currentTab: "${currentDesignerTab}")`);
+      return false;
+    }
 
     // アーカイブフィルター
     const archiveFilter = document.getElementById('archiveFilter').value;
@@ -3951,6 +3963,9 @@ function renderProjects() {
 
     return true;
   });
+
+  console.log('✅ フィルタ後の案件数:', filtered.length);
+  console.log('✅ フィルタ後の案件:', filtered.map(p => ({ customer: p.customer, assigned_to: p.assigned_to })));
 
   if (filtered.length === 0) {
     container.style.display = 'none';
