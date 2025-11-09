@@ -2090,6 +2090,9 @@ async function init() {
       showToast(`${failedCount}件のデータ読み込みに失敗しました。コンソールを確認してください。`, 'error');
     }
 
+    // 業者データとカテゴリデータをマージ（両方の読み込みが完了した後に実行）
+    mergeVendorCategories();
+
     console.log('🎨 画面描画開始...');
     renderSidebar();
     renderProjects();
@@ -2316,8 +2319,10 @@ async function loadVendorsV2() {
 
   vendorsV2 = data || [];
   console.log('✅ 業者読み込み完了:', vendorsV2.length, '件', vendorsV2);
+}
 
-  // カテゴリ情報を別途取得してマージ
+function mergeVendorCategories() {
+  // カテゴリ情報を業者データにマージ（Promise.allSettled完了後に呼び出す）
   if (vendorsV2.length > 0 && vendorCategories.length > 0) {
     vendorsV2 = vendorsV2.map(vendor => {
       const category = vendorCategories.find(c => c.id === vendor.category_id);
@@ -2326,6 +2331,7 @@ async function loadVendorsV2() {
         vendor_categories: category ? { name: category.name } : null
       };
     });
+    console.log('✅ 業者-カテゴリマージ完了');
   }
 }
 
