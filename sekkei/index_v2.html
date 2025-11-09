@@ -3142,6 +3142,10 @@ function renderSidebar() {
 
 function selectDesigner(name) {
   currentDesignerTab = name;
+
+  // URLを更新
+  updateURLWithDesigner(name);
+
   renderSidebar();
   renderProjects();
 }
@@ -3477,6 +3481,10 @@ function renderDesignerTabs() {
 
 function setDesignerTab(name) {
   currentDesignerTab = name;
+
+  // URLを更新
+  updateURLWithDesigner(name);
+
   renderDesignerTabs();
   renderProjects();
 }
@@ -5336,11 +5344,44 @@ function handleDragEnd(e) {
 // ============================================
 // URL直接アクセス機能（ハッシュルーティング）
 // ============================================
+function updateURLWithDesigner(designerName) {
+  const currentHash = window.location.hash.substring(1); // #を除去
+  const [pathPart] = currentHash.split('?');
+  const mainTab = pathPart.split('/')[0] || 'projects';
+
+  // 新しいURLを構築
+  let newHash = mainTab;
+  if (designerName !== 'ALL') {
+    newHash += `?designer=${encodeURIComponent(designerName)}`;
+  }
+
+  // hashchangeイベントを発火させずにURLを更新
+  history.replaceState(null, '', `#${newHash}`);
+}
+
 function handleHashChange() {
   const hash = window.location.hash.substring(1); // #を除去
   if (!hash) return;
 
-  const [mainTab, subTab] = hash.split('/');
+  // URLパラメータを分離（例: projects?designer=箕浦）
+  const [pathPart, queryPart] = hash.split('?');
+  const [mainTab, subTab] = pathPart.split('/');
+
+  // URLパラメータを解析
+  const params = new URLSearchParams(queryPart || '');
+  const designerParam = params.get('designer');
+
+  // 担当者フィルターを復元
+  if (designerParam) {
+    currentDesignerTab = designerParam;
+    // サイドバーとプロジェクト表示を更新（タブ切り替え後に実行）
+    setTimeout(() => {
+      renderSidebar();
+      if (mainTab === 'projects') {
+        renderProjects();
+      }
+    }, 150);
+  }
 
   // メインタブの切り替え
   if (mainTab === 'projects') {
