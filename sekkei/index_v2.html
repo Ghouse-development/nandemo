@@ -1227,10 +1227,21 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 24px;
+  max-height: calc(100vh - 180px);
 }
 
 .sub-tab-panel.active {
   display: block;
+}
+
+.table-container {
+  overflow-y: auto;
+  max-height: calc(100vh - 350px);
+}
+
+.cards-grid {
+  overflow-y: auto;
+  max-height: calc(100vh - 300px);
 }
 </style>
 </head>
@@ -2271,12 +2282,32 @@ async function loadTasksV2() {
 }
 
 async function loadVendorsV2() {
+  console.log('🔄 業者データ読み込み開始...');
+
   const { data, error } = await supabase
     .from('vendors_v2')
-    .select('*, vendor_categories(name)')
+    .select('*')
     .order('company');
-  if (!error) vendorsV2 = data || [];
-  console.log('✅ 業者読み込み完了:', vendorsV2.length, '件');
+
+  if (error) {
+    console.error('❌ 業者読み込みエラー:', error);
+    vendorsV2 = [];
+    return;
+  }
+
+  vendorsV2 = data || [];
+  console.log('✅ 業者読み込み完了:', vendorsV2.length, '件', vendorsV2);
+
+  // カテゴリ情報を別途取得してマージ
+  if (vendorsV2.length > 0 && vendorCategories.length > 0) {
+    vendorsV2 = vendorsV2.map(vendor => {
+      const category = vendorCategories.find(c => c.id === vendor.category_id);
+      return {
+        ...vendor,
+        vendor_categories: category ? { name: category.name } : null
+      };
+    });
+  }
 }
 
 async function loadTaskVendorMappings() {
@@ -3037,6 +3068,11 @@ function switchMainTab(tabName, element) {
 
   document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
   document.getElementById(tabName + 'Tab').classList.add('active');
+
+  // URLを更新（既存のハッシュと異なる場合のみ）
+  if (window.location.hash !== '#' + tabName) {
+    window.location.hash = tabName;
+  }
 }
 
 // サブタブ切り替え
@@ -3046,6 +3082,11 @@ function switchSubTab(panelName, element) {
 
   document.querySelectorAll('.sub-tab-panel').forEach(panel => panel.classList.remove('active'));
   document.getElementById(panelName + 'Panel').classList.add('active');
+
+  // URLを更新（設定タブ内のサブタブ）
+  if (window.location.hash !== `#settings/${panelName}`) {
+    window.location.hash = `settings/${panelName}`;
+  }
 
   // サブタブ切り替え時に対応する描画関数を実行
   switch(panelName) {
@@ -4516,8 +4557,6 @@ async function saveMappings() {
 }
 
 // ============================================
-// メール作成
-// ============================================
 function openEmailFromTask(projectId, taskKey) {
   const project = projects.find(p => p.id === projectId);
   if (!project) return;
@@ -5210,10 +5249,55 @@ function handleDragEnd(e) {
 }
 
 // ============================================
+// URL直接アクセス機能（ハッシュルーティング）
+// ============================================
+function handleHashChange() {
+  const hash = window.location.hash.substring(1); // #を除去
+  if (!hash) return;
+
+  const [mainTab, subTab] = hash.split('/');
+
+  // メインタブの切り替え
+  if (mainTab === 'projects') {
+    const btn = document.querySelector('.tab-nav-btn');
+    if (btn) switchMainTab('projects', btn);
+  } else if (mainTab === 'settings') {
+    const btn = document.querySelectorAll('.tab-nav-btn')[1];
+    if (btn) switchMainTab('settings', btn);
+
+    // サブタブの切り替え
+    if (subTab) {
+      setTimeout(() => {
+        const subTabMap = {
+          'staff': 0,
+          'vendors': 1,
+          'categories': 2,
+          'tasks': 3,
+          'products': 4
+        };
+        const index = subTabMap[subTab];
+        if (index !== undefined) {
+          const subBtn = document.querySelectorAll('.sub-tab-btn')[index];
+          if (subBtn) switchSubTab(subTab, subBtn);
+        }
+      }, 100);
+    }
+  }
+}
+
+// ハッシュ変更時のリスナー
+window.addEventListener('hashchange', handleHashChange);
+
+// ============================================
 // ページ読み込み時
 // ============================================
 window.addEventListener('DOMContentLoaded', () => {
   checkAuth();
+
+  // URL直接アクセスの処理
+  setTimeout(() => {
+    handleHashChange();
+  }, 500);
 });
 </script>
 </body>
