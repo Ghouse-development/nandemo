@@ -1350,11 +1350,9 @@ body {
         <!-- サブタブナビゲーション -->
         <nav class="sub-tabs-nav">
           <button class="sub-tab-btn active" onclick="switchSubTab('staff', this)">👥 スタッフ管理</button>
-          <button class="sub-tab-btn" onclick="switchSubTab('vendors', this)">🏢 業者管理</button>
+          <button class="sub-tab-btn" onclick="switchSubTab('vendors', this)">🏢 業者・メール管理</button>
           <button class="sub-tab-btn" onclick="switchSubTab('categories', this)">🏷️ カテゴリ管理</button>
           <button class="sub-tab-btn" onclick="switchSubTab('tasks', this)">✅ タスク管理</button>
-          <button class="sub-tab-btn" onclick="switchSubTab('templates', this)">📧 テンプレート管理</button>
-          <button class="sub-tab-btn" onclick="switchSubTab('mappings', this)">🔗 タスクマッピング</button>
         </nav>
 
         <!-- スタッフ管理 -->
@@ -1420,35 +1418,6 @@ body {
             </div>
           </div>
           <div id="tasksGrid"></div>
-        </div>
-
-        <!-- テンプレート管理 -->
-        <div id="templatesPanel" class="sub-tab-panel">
-          <div class="toolbar" style="padding-bottom: 16px; border-bottom: 1px solid var(--border-color); margin-bottom: 24px;">
-            <div class="toolbar-left">
-              <select class="select" id="categoryFilter">
-                <option value="">すべてのカテゴリ</option>
-                <option value="設計">設計</option>
-                <option value="IC">IC</option>
-              </select>
-            </div>
-            <div class="toolbar-right">
-              <button class="btn btn-primary" onclick="openTemplateModal()">+ テンプレート追加</button>
-            </div>
-          </div>
-          <div id="templatesTable"></div>
-        </div>
-
-        <!-- タスクマッピング -->
-        <div id="mappingsPanel" class="sub-tab-panel">
-          <div style="max-width: 800px; margin: 0 auto;">
-            <h2 style="margin-bottom: 20px; font-size: 24px; font-weight: 700;">タスク-テンプレート紐づけ</h2>
-            <p style="margin-bottom: 32px; color: var(--text-secondary);">各タスクで使用するメールテンプレートを設定します。</p>
-            <div id="mappingsGrid"></div>
-            <div style="margin-top: 32px;">
-              <button class="btn btn-primary" onclick="saveMappings()">保存</button>
-            </div>
-          </div>
         </div>
       </div>
     </main>
@@ -2312,14 +2281,25 @@ let currentCategoryFilter = 'ALL';
 
 function renderVendorsV2() {
   const container = document.getElementById('vendorsGrid');
-  if (!container) return;
+  if (!container) {
+    console.warn('⚠️ vendorsGrid要素が見つかりません');
+    return;
+  }
+
+  console.log('🔍 renderVendorsV2():', {
+    totalVendors: vendorsV2.length,
+    currentFilter: currentCategoryFilter,
+    vendors: vendorsV2
+  });
 
   const filtered = currentCategoryFilter === 'ALL'
     ? vendorsV2
     : vendorsV2.filter(v => v.category_id === currentCategoryFilter);
 
+  console.log('🔍 フィルター後の業者数:', filtered.length);
+
   if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><p>業者が登録されていません</p></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><p>業者が登録されていません<br><small>「+ 業者追加」ボタンから登録してください</small></p></div>';
     return;
   }
 
@@ -2945,12 +2925,6 @@ function switchSubTab(panelName, element) {
       break;
     case 'tasks':
       renderTasksManagement();
-      break;
-    case 'templates':
-      renderTemplates();
-      break;
-    case 'mappings':
-      renderMappings();
       break;
   }
 }

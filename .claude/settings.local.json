@@ -23,7 +23,15 @@
       "Bash(start https://nandemo-nu.vercel.app/sekkei/index_v2.html)",
       "Bash(timeout:*)",
       "Bash(start http://localhost:3000/sekkei/index_v2.html)",
-      "Bash(start http://localhost:3004/sekkei/index_v2.html)"
+      "Bash(start http://localhost:3004/sekkei/index_v2.html)",
+      "Bash(start https://nandemo-skbsk5i12-ghouse-developments-projects.vercel.app/sekkei/index_v2.html)",
+      "Bash(start https://nandemo-b4ocmu1vq-ghouse-developments-projects.vercel.app/sekkei/index_v2.html)",
+      "Bash(start https://nandemo-chx61mp2e-ghouse-developments-projects.vercel.app/sekkei/index_v2.html)",
+      "Bash(start https://nandemo-mi7oevkkm-ghouse-developments-projects.vercel.app/sekkei/index_v2.html)",
+      "Bash(start https://nandemo-lo37at6nc-ghouse-developments-projects.vercel.app/sekkei/index_v2.html)",
+      "Bash(start https://nandemo-h1vbxj71z-ghouse-developments-projects.vercel.app/sekkei/index_v2.html)",
+      "Bash(start https://nandemo-ag0mzka4z-ghouse-developments-projects.vercel.app/sekkei/index_v2.html)",
+      "Bash(start https://nandemo-o4luvew8u-ghouse-developments-projects.vercel.app/sekkei/index_v2.html)"
     ],
     "deny": [],
     "ask": []
