@@ -2239,6 +2239,123 @@ async function init() {
 }
 
 // ============================================
+// デバッグ用グローバル関数
+// ============================================
+// コンソールで debug() を実行すると、全データの詳細が表示されます
+window.debug = function() {
+  console.log('='.repeat(80));
+  console.log('🔍 デバッグ情報');
+  console.log('='.repeat(80));
+
+  console.log('\n📊 基本情報:');
+  console.log('  - スタッフ数:', designers.length);
+  console.log('  - 案件数:', projects.length);
+  console.log('  - タスク数:', tasksV2.length);
+  console.log('  - 業者数:', vendorsV2.length);
+
+  console.log('\n👥 スタッフ一覧:');
+  designers.forEach(d => {
+    console.log(`  - [${d.category}] ${d.name} (${d.email})`);
+  });
+
+  console.log('\n📋 案件一覧:');
+  projects.forEach(p => {
+    console.log(`  - ${p.customer}`);
+    console.log(`    設計: "${p.assigned_to}" (trim: "${(p.assigned_to || '').trim()}")`);
+    console.log(`    IC: "${p.ic_assignee}" (trim: "${(p.ic_assignee || '').trim()}")`);
+    console.log(`    status: ${p.status}, is_archived: ${p.is_archived}`);
+  });
+
+  console.log('\n' + '='.repeat(80));
+  return 'デバッグ情報を出力しました。上記を確認してください。';
+};
+
+// コンソールで checkAssignment('担当者名', '案件名') を実行すると、詳細チェックができます
+window.checkAssignment = function(designerName, projectName) {
+  console.log('='.repeat(80));
+  console.log(`🔍 割り当てチェック: ${designerName} → ${projectName}`);
+  console.log('='.repeat(80));
+
+  const designer = designers.find(d => d.name.includes(designerName));
+  if (!designer) {
+    console.error(`❌ スタッフ "${designerName}" が見つかりません`);
+    console.log('登録されているスタッフ:', designers.map(d => d.name));
+    return;
+  }
+
+  const project = projects.find(p => p.customer.includes(projectName));
+  if (!project) {
+    console.error(`❌ 案件 "${projectName}" が見つかりません`);
+    console.log('登録されている案件:', projects.map(p => p.customer));
+    return;
+  }
+
+  console.log('\n✅ データ確認:');
+  console.log('スタッフ情報:', {
+    name: designer.name,
+    nameLength: designer.name.length,
+    nameTrimmed: designer.name.trim(),
+    category: designer.category,
+    email: designer.email
+  });
+
+  console.log('\n案件情報:', {
+    customer: project.customer,
+    assigned_to: `"${project.assigned_to}"`,
+    assigned_to_length: project.assigned_to?.length,
+    assigned_to_trimmed: `"${(project.assigned_to || '').trim()}"`,
+    ic_assignee: `"${project.ic_assignee}"`,
+    ic_assignee_length: project.ic_assignee?.length,
+    ic_assignee_trimmed: `"${(project.ic_assignee || '').trim()}"`,
+    status: project.status,
+    is_archived: project.is_archived
+  });
+
+  console.log('\n🔍 マッチング結果:');
+  const designerNameTrimmed = designer.name.trim();
+  const assignedToTrimmed = (project.assigned_to || '').trim();
+  const icAssigneeTrimmed = (project.ic_assignee || '').trim();
+
+  const matchAssigned = assignedToTrimmed === designerNameTrimmed;
+  const matchIC = icAssigneeTrimmed === designerNameTrimmed;
+  const statusOK = project.status !== 'completed';
+  const archivedOK = !project.is_archived;
+  const finalMatch = (matchAssigned || matchIC) && statusOK && archivedOK;
+
+  console.log(`  - assigned_to一致: ${matchAssigned ? '✅' : '❌'} ("${assignedToTrimmed}" === "${designerNameTrimmed}")`);
+  console.log(`  - ic_assignee一致: ${matchIC ? '✅' : '❌'} ("${icAssigneeTrimmed}" === "${designerNameTrimmed}")`);
+  console.log(`  - statusチェック: ${statusOK ? '✅' : '❌'} (status !== "completed")`);
+  console.log(`  - archivedチェック: ${archivedOK ? '✅' : '❌'} (!is_archived)`);
+  console.log(`  - 最終判定: ${finalMatch ? '✅ カウントされる' : '❌ カウントされない'}`);
+
+  if (!finalMatch) {
+    console.log('\n💡 カウントされない理由:');
+    if (!matchAssigned && !matchIC) {
+      console.log('  - 担当者名が一致していません');
+      if (assignedToTrimmed !== designerNameTrimmed) {
+        console.log(`    設計: "${assignedToTrimmed}" ≠ "${designerNameTrimmed}"`);
+      }
+      if (icAssigneeTrimmed !== designerNameTrimmed) {
+        console.log(`    IC: "${icAssigneeTrimmed}" ≠ "${designerNameTrimmed}"`);
+      }
+    }
+    if (!statusOK) {
+      console.log(`  - statusが "completed" です`);
+    }
+    if (!archivedOK) {
+      console.log(`  - is_archived が true です`);
+    }
+  }
+
+  console.log('\n' + '='.repeat(80));
+  return finalMatch ? 'この案件はカウントされます ✅' : 'この案件はカウントされません ❌';
+};
+
+console.log('💡 デバッグ関数が利用可能です:');
+console.log('  - debug() : 全データの詳細を表示');
+console.log('  - checkAssignment("担当者名", "案件名") : 割り当てチェック');
+
+// ============================================
 // データ読み込み
 // ============================================
 async function loadDesigners() {
