@@ -4224,8 +4224,8 @@ async function saveProject() {
   const icDesignerId = icDesigner ? icDesigner.id : null;
 
   const blankProgress = {};
-  Object.keys(TASK_NAMES).forEach(key => {
-    blankProgress[key] = { completed: false, date: '', state: '' };
+  tasksV2.forEach(task => {
+    blankProgress[task.task_key] = { completed: false, date: '', state: '' };
   });
 
   if (editingProjectId) {
