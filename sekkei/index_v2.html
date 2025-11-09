@@ -1763,12 +1763,7 @@ body {
     <div class="modal-body">
       <form id="taskForm">
         <input type="hidden" id="taskId">
-
-        <div class="form-group">
-          <label class="form-label">タスクキー *</label>
-          <input type="text" class="form-input" id="taskKey" placeholder="例：meeting0" required>
-          <div class="form-hint">英数字とアンダースコアのみ使用可能（システム内部ID）</div>
-        </div>
+        <input type="hidden" id="taskKey">
 
         <div class="form-group">
           <label class="form-label">タスク名 *</label>
@@ -3171,7 +3166,6 @@ function toggleTaskState() {
 
 async function saveTask() {
   const id = document.getElementById('taskId').value;
-  const taskKey = document.getElementById('taskKey').value.trim();
   const taskName = document.getElementById('taskName').value.trim();
   const category = document.getElementById('taskCategory').value;
   const order = parseInt(document.getElementById('taskOrder').value) || 0;
@@ -3179,9 +3173,18 @@ async function saveTask() {
   const stateOptionsStr = document.getElementById('taskStateOptions').value.trim();
   const hasEmailButton = document.getElementById('taskHasEmailButton').checked;
 
-  if (!taskKey || !taskName) {
-    showToast('タスクキーとタスク名を入力してください', 'error');
+  if (!taskName) {
+    showToast('タスク名を入力してください', 'error');
     return;
+  }
+
+  // タスクキーを自動生成（編集時は既存のキーを使用）
+  let taskKey = document.getElementById('taskKey').value;
+  if (!taskKey) {
+    // 新規作成時：タスク名から自動生成（日本語を削除し、スペースをアンダースコアに変換）
+    taskKey = 'task_' + taskName.replace(/[\u3000-\u9FFF]/g, '').replace(/\s+/g, '_').toLowerCase() + '_' + Date.now();
+    // 安全のため、英数字とアンダースコアのみに制限
+    taskKey = taskKey.replace(/[^a-z0-9_]/g, '_');
   }
 
   let stateOptions = null;
