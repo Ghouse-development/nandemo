@@ -1807,6 +1807,14 @@ body {
         </div>
 
         <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="taskHasEmailButton">
+            <span>📧 メール作成ボタンを表示する</span>
+          </label>
+          <div class="form-hint">チェックすると案件カードのタスクに📧ボタンが表示されます</div>
+        </div>
+
+        <div class="form-group">
           <label class="form-label">紐づけ業者（複数選択可）</label>
           <div id="taskVendorSelection" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 8px; border-radius: 4px;">
             <!-- ベンダーのチェックボックスリストがここに表示される -->
@@ -3020,14 +3028,15 @@ function renderTasksManagement() {
         <table class="table">
           <thead>
             <tr>
-              <th>表示順</th>
+              <th style="width: 60px;">順</th>
               <th>タスク名</th>
-              <th>状態管理</th>
+              <th style="width: 100px;">状態管理</th>
+              <th style="width: 120px;">📧ボタン</th>
               <th>紐づけ業者</th>
-              <th>操作</th>
+              <th style="width: 180px;">操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="sekkeiTasksBody">
             ${sekkeiTasks.map(task => renderTaskRow(task)).join('')}
           </tbody>
         </table>
@@ -3039,14 +3048,15 @@ function renderTasksManagement() {
         <table class="table">
           <thead>
             <tr>
-              <th>表示順</th>
+              <th style="width: 60px;">順</th>
               <th>タスク名</th>
-              <th>状態管理</th>
+              <th style="width: 100px;">状態管理</th>
+              <th style="width: 120px;">📧ボタン</th>
               <th>紐づけ業者</th>
-              <th>操作</th>
+              <th style="width: 180px;">操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="icTasksBody">
             ${icTasks.map(task => renderTaskRow(task)).join('')}
           </tbody>
         </table>
@@ -3066,11 +3076,16 @@ function renderTaskRow(task) {
     `<span class="badge badge-success">あり</span>` :
     `<span class="badge badge-secondary">なし</span>`;
 
+  const emailButtonInfo = task.has_email_button ?
+    `<span class="badge badge-success">表示</span>` :
+    `<span class="badge badge-secondary">非表示</span>`;
+
   return `
-    <tr>
-      <td>${task.display_order}</td>
+    <tr draggable="true" ondragstart="handleTaskDragStart(event, '${task.id}')" ondragover="handleTaskDragOver(event)" ondrop="handleTaskDrop(event, '${task.id}')" style="cursor: move;">
+      <td><span style="color: var(--text-muted);">⋮⋮</span> ${task.display_order}</td>
       <td><strong>${task.task_name}</strong></td>
       <td>${stateInfo}</td>
+      <td>${emailButtonInfo}</td>
       <td>${vendorNames || '-'}</td>
       <td>
         <button class="btn btn-secondary btn-small" onclick="editTask('${task.id}')">編集</button>
@@ -3096,6 +3111,7 @@ function openTaskModal(taskId = null) {
     document.getElementById('taskOrder').value = task.display_order;
     document.getElementById('taskHasState').checked = task.has_state;
     document.getElementById('taskStateOptions').value = task.state_options ? JSON.stringify(task.state_options) : '';
+    document.getElementById('taskHasEmailButton').checked = task.has_email_button !== false; // デフォルトtrue
     toggleTaskState();
     populateTaskVendorSelection(taskId);
   } else {
@@ -3105,6 +3121,7 @@ function openTaskModal(taskId = null) {
     document.getElementById('taskCategory').value = '設計';
     document.getElementById('taskOrder').value = tasksV2.length + 1;
     document.getElementById('taskHasState').checked = false;
+    document.getElementById('taskHasEmailButton').checked = true; // デフォルトtrue
     toggleTaskState();
     populateTaskVendorSelection(null);
   }
@@ -3160,6 +3177,7 @@ async function saveTask() {
   const order = parseInt(document.getElementById('taskOrder').value) || 0;
   const hasState = document.getElementById('taskHasState').checked;
   const stateOptionsStr = document.getElementById('taskStateOptions').value.trim();
+  const hasEmailButton = document.getElementById('taskHasEmailButton').checked;
 
   if (!taskKey || !taskName) {
     showToast('タスクキーとタスク名を入力してください', 'error');
@@ -3184,7 +3202,8 @@ async function saveTask() {
     category,
     display_order: order,
     has_state: hasState,
-    state_options: stateOptions
+    state_options: stateOptions,
+    has_email_button: hasEmailButton
   };
 
   let result;
@@ -3275,6 +3294,85 @@ async function deleteTask(taskId) {
   showToast('タスクを削除しました', 'success');
   await loadTasksV2();
   renderTasksManagement();
+}
+
+// ドラッグ&ドロップでタスクの表示順を変更
+let draggedTaskId = null;
+
+function handleTaskDragStart(event, taskId) {
+  draggedTaskId = taskId;
+  event.dataTransfer.effectAllowed = 'move';
+  event.target.style.opacity = '0.5';
+}
+
+function handleTaskDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  return false;
+}
+
+async function handleTaskDrop(event, targetTaskId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!draggedTaskId || draggedTaskId === targetTaskId) {
+    resetDragState();
+    return;
+  }
+
+  const draggedTask = tasksV2.find(t => t.id === draggedTaskId);
+  const targetTask = tasksV2.find(t => t.id === targetTaskId);
+
+  if (!draggedTask || !targetTask) {
+    resetDragState();
+    return;
+  }
+
+  // 同じカテゴリ内でのみ並び替え可能
+  if (draggedTask.category !== targetTask.category) {
+    showToast('同じカテゴリ内でのみ並び替え可能です', 'error');
+    resetDragState();
+    return;
+  }
+
+  // 表示順を入れ替え
+  const draggedOrder = draggedTask.display_order;
+  const targetOrder = targetTask.display_order;
+
+  showStatus('並び替え中...', 'saving');
+
+  // 両方のタスクの表示順を更新
+  const updates = [
+    supabase.from('tasks').update({ display_order: targetOrder }).eq('id', draggedTaskId),
+    supabase.from('tasks').update({ display_order: draggedOrder }).eq('id', targetTaskId)
+  ];
+
+  const results = await Promise.all(updates);
+
+  if (results.some(r => r.error)) {
+    showStatus('並び替え失敗', 'error');
+    showToast('並び替えに失敗しました', 'error');
+    resetDragState();
+    return;
+  }
+
+  // ローカルデータも更新
+  draggedTask.display_order = targetOrder;
+  targetTask.display_order = draggedOrder;
+
+  // 再描画
+  renderTasksManagement();
+  showStatus('並び替え完了', 'success');
+  showToast('表示順を変更しました', 'success');
+  resetDragState();
+}
+
+function resetDragState() {
+  draggedTaskId = null;
+  // すべての行の透明度をリセット
+  document.querySelectorAll('#tasksGrid tr[draggable]').forEach(tr => {
+    tr.style.opacity = '1';
+  });
 }
 
 // ============================================
@@ -3745,9 +3843,10 @@ function renderProjectCard(project) {
     const key = taskDef.task_key;
     const task = progressData[key] || { completed: false, date: '', state: '' };
 
-    // メールボタン（タスクに業者が紐づいている場合のみ表示）
+    // メールボタン（タスクでメール機能が有効 かつ 業者が紐づいている場合のみ表示）
     const hasVendor = taskVendorMappings.some(m => m.task_id === taskDef.id);
-    const emailBtn = hasVendor ?
+    const showEmailButton = taskDef.has_email_button !== false && hasVendor; // has_email_buttonがundefinedの場合もtrueとして扱う
+    const emailBtn = showEmailButton ?
       `<button class="task-email-btn" onclick="openEmailFromTask('${project.id}', '${key}')" title="メール作成">📧</button>` : '';
 
     // デバッグ: メールボタンが表示される条件を確認
