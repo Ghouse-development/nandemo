@@ -2087,7 +2087,7 @@ async function selectAccountType(category) {
 
   const displayName = currentUser.email.split('@')[0];
   document.getElementById('userName').textContent = displayName;
-  document.getElementById('userAvatar').src = 'https://via.placeholder.com/32/4A90E2/FFFFFF?text=' + displayName.charAt(0).toUpperCase();
+  document.getElementById('userAvatar').src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=4A90E2&color=fff&size=32';
 
   // 切り替えボタンを表示
   updateCategorySwitchButton();
